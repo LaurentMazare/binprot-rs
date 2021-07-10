@@ -1,4 +1,3 @@
-// TODO: rename the [r] and [w] argumenteto some private names.
 // TODO: maybe add also a deriver for BinProtSize?
 extern crate proc_macro;
 
@@ -105,7 +104,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
 
     let output = quote! {
         impl #impl_generics binprot::BinProtWrite for #ident #ty_generics #where_clause {
-            fn binprot_write<W: std::io::Write>(&self, __binprot_w: &mut W) -> std::io::Result<()> {
+            fn binprot_write<__BinProtW: std::io::Write>(&self, __binprot_w: &mut __BinProtW) -> std::io::Result<()> {
                 #impl_fn
                 Ok(())
             }
@@ -220,7 +219,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
 
     let output = quote! {
         impl #impl_generics binprot::BinProtRead for #ident #ty_generics #where_clause {
-            fn binprot_read<R: std::io::Read + ?Sized>(__binprot_r: &mut R) -> std::result::Result<Self, binprot::Error> {
+            fn binprot_read<__BinProtR: std::io::Read + ?Sized>(__binprot_r: &mut __BinProtR) -> std::result::Result<Self, binprot::Error> {
                 #read_fn
             }
         }
