@@ -9,7 +9,11 @@ const CODE_INT64: u8 = 0xfc;
 #[derive(Debug)]
 pub enum Error {
     IoError(std::io::Error),
-    ParseError,
+    UnexpectedVariantIndex { index: u8, ident: &'static str },
+    UnexpectedValueForUnit(u8),
+    UnexpectedValueForBool(u8),
+    UnexpectedValueForOption(u8),
+    Utf8Error(std::str::Utf8Error),
 }
 
 impl std::fmt::Display for Error {
@@ -23,6 +27,12 @@ impl std::error::Error for Error {}
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error::IoError(e)
+    }
+}
+
+impl From<std::str::Utf8Error> for Error {
+    fn from(e: std::str::Utf8Error) -> Self {
+        Error::Utf8Error(e)
     }
 }
 
@@ -139,6 +149,59 @@ impl BinProtWrite for f64 {
     }
 }
 
+impl BinProtWrite for () {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        w.write_all(&[0u8])
+    }
+}
+
+impl BinProtWrite for bool {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        let b = if *self { 1 } else { 0 };
+        w.write_all(&[b])
+    }
+}
+
+impl<T: BinProtWrite> BinProtWrite for Option<T> {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        match &*self {
+            None => w.write_all(&[0u8]),
+            Some(v) => {
+                w.write_all(&[1u8])?;
+                v.binprot_write(w)
+            }
+        }
+    }
+}
+
+impl<T: BinProtWrite> BinProtWrite for Vec<T> {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        write_nat0(w, self.len() as u64)?;
+        for v in self.iter() {
+            v.binprot_write(w)?
+        }
+        Ok(())
+    }
+}
+
+impl<T: BinProtWrite> BinProtWrite for &[T] {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        write_nat0(w, self.len() as u64)?;
+        for v in self.iter() {
+            v.binprot_write(w)?
+        }
+        Ok(())
+    }
+}
+
+impl BinProtWrite for String {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        let bytes = self.as_bytes();
+        write_nat0(w, bytes.len() as u64)?;
+        w.write_all(&bytes)
+    }
+}
+
 impl<A: BinProtWrite, B: BinProtWrite> BinProtWrite for (A, B) {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         self.0.binprot_write(w)?;
@@ -174,6 +237,81 @@ impl BinProtRead for f64 {
     {
         let f64 = read_float(r)?;
         Ok(f64)
+    }
+}
+
+impl BinProtRead for () {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let c = r.read_u8()?;
+        if c == 0 {
+            Ok(())
+        } else {
+            Err(Error::UnexpectedValueForUnit(c))
+        }
+    }
+}
+
+impl BinProtRead for bool {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let c = r.read_u8()?;
+        if c == 0 {
+            Ok(false)
+        } else if c == 1 {
+            Ok(true)
+        } else {
+            Err(Error::UnexpectedValueForBool(c))
+        }
+    }
+}
+
+impl<T: BinProtRead> BinProtRead for Option<T> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let c = r.read_u8()?;
+        if c == 0 {
+            Ok(None)
+        } else if c == 1 {
+            let v = T::binprot_read(r)?;
+            Ok(Some(v))
+        } else {
+            Err(Error::UnexpectedValueForOption(c))
+        }
+    }
+}
+
+impl<T: BinProtRead> BinProtRead for Vec<T> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let len = read_nat0(r)?;
+        let mut v: Vec<T> = Vec::new();
+        for _i in 0..len {
+            let item = T::binprot_read(r)?;
+            v.push(item)
+        }
+        Ok(v)
+    }
+}
+
+impl BinProtRead for String {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let len = read_nat0(r)?;
+        let mut buf: Vec<u8> = vec![0u8; len as usize];
+        r.read_exact(&mut buf)?;
+        let str = std::str::from_utf8(&buf)?;
+        Ok(str.to_string())
     }
 }
 

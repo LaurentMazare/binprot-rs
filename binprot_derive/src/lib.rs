@@ -34,7 +34,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
             syn::Fields::Named(FieldsNamed { named, .. }) => {
                 let fields = named.iter().map(|field| {
                     let name = field.ident.as_ref().unwrap();
-                    quote! { self.#name.binprot_write(w)?; }
+                    quote! { self.#name.binprot_write(__binprot_w)?; }
                 });
                 quote! {#(#fields)*}
             }
@@ -42,7 +42,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                 let num_fields = unnamed.len();
                 let fields = (0..num_fields).map(|index| {
                     let index = syn::Index::from(index);
-                    quote! { self.#index.binprot_write(w)?; }
+                    quote! { self.#index.binprot_write(__binprot_w)?; }
                 });
                 quote! {#(#fields)*}
             }
@@ -68,7 +68,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                         let args = named.iter().map(|field| field.ident.as_ref().unwrap());
                         let fields = named.iter().map(|field| {
                             let name = field.ident.as_ref().unwrap();
-                            quote! { #name.binprot_write(w)?; }
+                            quote! { #name.binprot_write(__binprot_w)?; }
                         });
                         (quote! { { #(#args),* } }, quote! { #(#fields)* })
                     }
@@ -77,7 +77,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                         let args = (0..num_fields).map(|index| format_ident!("arg{}", index));
                         let write_args = {
                             let args = args.clone();
-                            quote! { #(#args.binprot_write(w)?;)* }
+                            quote! { #(#args.binprot_write(__binprot_w)?;)* }
                         };
                         (quote! { (#(#args),*) }, write_args)
                     }
@@ -85,7 +85,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                 };
                 quote! {
                     #ident::#variant_ident #pattern => {
-                        w.write_all(&[#variant_index])?;
+                        __binprot_w.write_all(&[#variant_index])?;
                         #actions
                     }
                 }
@@ -105,7 +105,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
 
     let output = quote! {
         impl #impl_generics binprot::BinProtWrite for #ident #ty_generics #where_clause {
-            fn binprot_write<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
+            fn binprot_write<W: std::io::Write>(&self, __binprot_w: &mut W) -> std::io::Result<()> {
                 #impl_fn
                 Ok(())
             }
@@ -142,7 +142,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                 let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
                 let mk_fields = named.iter().map(|field| {
                     let name = field.ident.as_ref().unwrap();
-                    quote! { let #name = BinProtRead::binprot_read(r)?; }
+                    quote! { let #name = BinProtRead::binprot_read(__binprot_r)?; }
                 });
                 quote! {
                     #(#mk_fields)*
@@ -154,7 +154,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                 let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
                 let mk_fields = (0..num_fields).map(|index| {
                     let ident = format_ident!("__field{}", index);
-                    quote! { let #ident = BinProtRead::binprot_read(r)?; }
+                    quote! { let #ident = BinProtRead::binprot_read(__binprot_r)?; }
                 });
                 quote! {
                     #(#mk_fields)*
@@ -181,7 +181,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                         let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
                         let mk_fields = named.iter().map(|field| {
                             let name = field.ident.as_ref().unwrap();
-                            quote! { let #name = BinProtRead::binprot_read(r)?; }
+                            quote! { let #name = BinProtRead::binprot_read(__binprot_r)?; }
                         });
                         (quote! { #(#mk_fields)* }, quote! { { #(#fields),* } })
                     }
@@ -190,7 +190,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                         let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
                         let mk_fields = (0..num_fields).map(|index| {
                             let ident = format_ident!("__field{}", index);
-                            quote! { let #ident = BinProtRead::binprot_read(r)?; }
+                            quote! { let #ident = BinProtRead::binprot_read(__binprot_r)?; }
                         });
                         (quote! { #(#mk_fields)* }, quote! { (#(#fields),*) })
                     }
@@ -203,12 +203,11 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                     }
                 }
             });
-            // TODO: use a dedicated error.
             quote! {
-                let variant_index = byteorder::ReadBytesExt::read_u8(r)?;
+                let variant_index = byteorder::ReadBytesExt::read_u8(__binprot_r)?;
                 match variant_index {
                     #(#cases)*
-                    _variant_index => Err(binprot::Error::ParseError),
+                    index => Err(binprot::Error::UnexpectedVariantIndex { index, ident: stringify!(#ident) } ),
                 }
             }
         }
@@ -221,7 +220,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
 
     let output = quote! {
         impl #impl_generics binprot::BinProtRead for #ident #ty_generics #where_clause {
-            fn binprot_read<R: std::io::Read + ?Sized>(r: &mut R) -> std::result::Result<Self, binprot::Error> {
+            fn binprot_read<R: std::io::Read + ?Sized>(__binprot_r: &mut R) -> std::result::Result<Self, binprot::Error> {
                 #read_fn
             }
         }

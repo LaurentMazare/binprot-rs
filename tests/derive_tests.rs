@@ -86,3 +86,41 @@ fn breakfast4() {
     test_roundtrip(BreakfastMenu::<i64>::Nothing, 1, None);
     test_roundtrip(BreakfastMenu::<i64>::Eggs(42), 2, None);
 }
+
+#[derive(BinProtWrite, BinProtRead, Debug, PartialEq)]
+struct BreakfastItem {
+    name: String,
+    quantity: f64,
+    large: bool,
+}
+
+#[test]
+fn breakfast5() {
+    test_roundtrip(
+        BreakfastItem {
+            name: "egg".to_string(),
+            quantity: 3.1415,
+            large: true,
+        },
+        13,
+        None,
+    );
+    test_roundtrip(
+        BreakfastItem {
+            name: "croissant".to_string(),
+            quantity: -12345.,
+            large: false,
+        },
+        19,
+        None,
+    );
+    test_roundtrip(
+        BreakfastItem {
+            name: "PainAuChocolat".to_string(),
+            quantity: 299279458.0,
+            large: false,
+        },
+        24,
+        None,
+    );
+}
