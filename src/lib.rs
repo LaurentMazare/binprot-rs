@@ -129,6 +129,7 @@ fn read_float<R: Read + ?Sized>(r: &mut R) -> std::io::Result<f64> {
     Ok(f)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct Nat0(u64);
 
 impl BinProtWrite for Nat0 {
@@ -353,7 +354,7 @@ impl<T: BinProtWrite> BinProtSize for T {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WithLen<T>(pub T);
 
 impl<T: BinProtWrite + BinProtSize> BinProtWrite for WithLen<T> {
