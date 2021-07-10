@@ -1,19 +1,34 @@
 use binprot::{BinProtRead, BinProtSize, BinProtWrite};
 use binprot_derive::{BinProtRead, BinProtWrite};
 
+fn test_roundtrip<T>(t: T, sz: usize, vs: Option<&[u8]>)
+where
+    T: BinProtRead + BinProtWrite + PartialEq + std::fmt::Debug,
+{
+    assert_eq!(t.binprot_size(), sz);
+    let mut data: Vec<u8> = Vec::new();
+    t.binprot_write(&mut data).unwrap();
+    let mut slice = data.as_slice();
+    if let Some(vs) = vs {
+        assert_eq!(slice, vs);
+    }
+    let flipped = T::binprot_read(&mut slice).unwrap();
+    assert_eq!(t, flipped)
+}
+
 #[derive(BinProtRead, BinProtWrite, Debug, PartialEq)]
 struct Pancakes(i64);
 
 #[test]
 fn breakfast1() {
-    let pancakes = Pancakes(12);
-    assert_eq!(pancakes.binprot_size(), 1);
-    let mut data: Vec<u8> = Vec::new();
-    pancakes.binprot_write(&mut data).unwrap();
-    let mut slice = data.as_slice();
-    assert_eq!(slice, [12]);
-    let flipped = Pancakes::binprot_read(&mut slice).unwrap();
-    assert_eq!(pancakes, flipped)
+    test_roundtrip(Pancakes(12), 1, Some(&[12]));
+    test_roundtrip(Pancakes(0), 1, Some(&[0]));
+    test_roundtrip(Pancakes(-1), 2, Some(&[255, 255]));
+    test_roundtrip(
+        Pancakes(12345678910111213),
+        9,
+        Some(&[252, 237, 189, 242, 93, 84, 220, 43, 0]),
+    );
 }
 
 #[derive(BinProtRead, BinProtWrite, Debug, PartialEq)]
@@ -21,17 +36,13 @@ struct MorePancakes(i64, f64, i64);
 
 #[test]
 fn breakfast2() {
-    let more_pancakes = MorePancakes(12, 3.141592, 1234567890123);
-    assert_eq!(more_pancakes.binprot_size(), 18);
-    let mut data: Vec<u8> = Vec::new();
-    more_pancakes.binprot_write(&mut data).unwrap();
-    let mut slice = data.as_slice();
-    assert_eq!(
-        slice,
-        [12, 122, 0, 139, 252, 250, 33, 9, 64, 252, 203, 4, 251, 113, 31, 1, 0, 0]
+    test_roundtrip(
+        MorePancakes(12, 3.141592, 1234567890123),
+        18,
+        Some(&[
+            12, 122, 0, 139, 252, 250, 33, 9, 64, 252, 203, 4, 251, 113, 31, 1, 0, 0,
+        ]),
     );
-    let flipped = MorePancakes::binprot_read(&mut slice).unwrap();
-    assert_eq!(more_pancakes, flipped)
 }
 
 #[derive(BinProtRead, BinProtWrite, Debug, PartialEq)]
@@ -50,15 +61,10 @@ fn breakfast3() {
         value1: -1234567890123456,
         value2: (3.141592, 6535.8979),
     };
-    assert_eq!(breakfasts.binprot_size(), 37);
-    let mut data: Vec<u8> = Vec::new();
-    breakfasts.binprot_write(&mut data).unwrap();
-    let mut slice = data.as_slice();
-    let flipped = Breakfasts::binprot_read(&mut slice).unwrap();
-    assert_eq!(breakfasts, flipped)
+    test_roundtrip(breakfasts, 37, None)
 }
 
-#[derive(BinProtWrite, Debug, PartialEq)]
+#[derive(BinProtWrite, BinProtRead, Debug, PartialEq)]
 enum BreakfastMenu<T> {
     Any(T),
     Eggs(i64),
@@ -66,6 +72,7 @@ enum BreakfastMenu<T> {
     MorePancakes(MorePancakes),
     LotsOfPancakes(Pancakes, MorePancakes),
     Everything { eggs: i64, pancakes: i64 },
+    Nothing,
 }
 
 #[test]
@@ -75,11 +82,7 @@ fn breakfast4() {
             eggs: 123,
             pancakes: 456,
         });
-    assert_eq!(breakfast.binprot_size(), 6);
-    let mut data: Vec<u8> = Vec::new();
-    breakfast.binprot_write(&mut data).unwrap();
-    let mut slice = data.as_slice();
-    assert_eq!(slice, [0, 5, 123, 254, 200, 1],);
-    // let flipped = BreakfastMenu::binprot_read(&mut slice).unwrap();
-    // assert_eq!(breakfast, flipped)
+    test_roundtrip(breakfast, 6, None);
+    test_roundtrip(BreakfastMenu::<i64>::Nothing, 1, None);
+    test_roundtrip(BreakfastMenu::<i64>::Eggs(42), 2, None);
 }

@@ -1,3 +1,5 @@
+// TODO: rename the [r] and [w] argumenteto some private names.
+// TODO: maybe add also a deriver for BinProtSize?
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
@@ -6,7 +8,6 @@ use syn::{
     parse_quote, DataEnum, DataUnion, DeriveInput, FieldsNamed, FieldsUnnamed, GenericParam,
 };
 
-// TODO: maybe add also a deriver for BinProtSize?
 #[proc_macro_derive(BinProtWrite, attributes(polymorphic))]
 pub fn binprot_write_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
@@ -60,6 +61,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                     .into();
             }
             let cases = variants.iter().enumerate().map(|(variant_index, variant)| {
+                let variant_index = variant_index as u8;
                 let variant_ident = &variant.ident;
                 let (pattern, actions) = match &variant.fields {
                     syn::Fields::Named(FieldsNamed { named, .. }) => {
@@ -75,15 +77,15 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                         let args = (0..num_fields).map(|index| format_ident!("arg{}", index));
                         let write_args = {
                             let args = args.clone();
-                            quote! { #(#args.binprot_write(w);)* }
+                            quote! { #(#args.binprot_write(w)?;)* }
                         };
                         (quote! { (#(#args),*) }, write_args)
                     }
-                    syn::Fields::Unit => (quote! { () }, quote! {}),
+                    syn::Fields::Unit => (quote! {}, quote! {}),
                 };
                 quote! {
                     #ident::#variant_ident #pattern => {
-                        w.write_all(&[#variant_index as u8])?;
+                        w.write_all(&[#variant_index])?;
                         #actions
                     }
                 }
@@ -134,31 +136,81 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let (mk_temps, build) = match data {
+    let read_fn = match data {
         syn::Data::Struct(s) => match &s.fields {
             syn::Fields::Named(FieldsNamed { named, .. }) => {
                 let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
-                let build = quote! { #ident { #(#fields),* }};
                 let mk_fields = named.iter().map(|field| {
                     let name = field.ident.as_ref().unwrap();
                     quote! { let #name = BinProtRead::binprot_read(r)?; }
                 });
-                (quote! {#(#mk_fields)*}, build)
+                quote! {
+                    #(#mk_fields)*
+                    Ok(#ident { #(#fields),* })
+                }
             }
             syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
                 let num_fields = unnamed.len();
                 let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
-                let build = quote! { #ident(#(#fields),*)};
                 let mk_fields = (0..num_fields).map(|index| {
                     let ident = format_ident!("__field{}", index);
                     quote! { let #ident = BinProtRead::binprot_read(r)?; }
                 });
-                (quote! {#(#mk_fields)*}, build)
+                quote! {
+                    #(#mk_fields)*
+                    Ok(#ident(#(#fields),*))
+                }
             }
             syn::Fields::Unit => unimplemented!(),
         },
-        syn::Data::Enum(DataEnum { variants, .. }) => {
-            unimplemented!()
+        syn::Data::Enum(DataEnum {
+            enum_token,
+            variants,
+            ..
+        }) => {
+            if variants.len() > 256 {
+                return syn::Error::new_spanned(&enum_token, "enum with to many cases")
+                    .to_compile_error()
+                    .into();
+            }
+            let cases = variants.iter().enumerate().map(|(variant_index, variant)| {
+                let variant_index = variant_index as u8;
+                let variant_ident = &variant.ident;
+                let (mk_fields, fields) = match &variant.fields {
+                    syn::Fields::Named(FieldsNamed { named, .. }) => {
+                        let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
+                        let mk_fields = named.iter().map(|field| {
+                            let name = field.ident.as_ref().unwrap();
+                            quote! { let #name = BinProtRead::binprot_read(r)?; }
+                        });
+                        (quote! { #(#mk_fields)* }, quote! { { #(#fields),* } })
+                    }
+                    syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                        let num_fields = unnamed.len();
+                        let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
+                        let mk_fields = (0..num_fields).map(|index| {
+                            let ident = format_ident!("__field{}", index);
+                            quote! { let #ident = BinProtRead::binprot_read(r)?; }
+                        });
+                        (quote! { #(#mk_fields)* }, quote! { (#(#fields),*) })
+                    }
+                    syn::Fields::Unit => (quote! {}, quote! {}),
+                };
+                quote! {
+                    #variant_index => {
+                        #mk_fields
+                        Ok(#ident::#variant_ident #fields)
+                    }
+                }
+            });
+            // TODO: use a dedicated error.
+            quote! {
+                let variant_index = byteorder::ReadBytesExt::read_u8(r)?;
+                match variant_index {
+                    #(#cases)*
+                    _variant_index => Err(binprot::Error::ParseError),
+                }
+            }
         }
         syn::Data::Union(DataUnion { union_token, .. }) => {
             return syn::Error::new_spanned(&union_token, "union is not supported")
@@ -170,8 +222,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
     let output = quote! {
         impl #impl_generics binprot::BinProtRead for #ident #ty_generics #where_clause {
             fn binprot_read<R: std::io::Read + ?Sized>(r: &mut R) -> std::result::Result<Self, binprot::Error> {
-                #mk_temps
-                Ok(#build)
+                #read_fn
             }
         }
     };
