@@ -352,3 +352,26 @@ impl<T: BinProtWrite> BinProtSize for T {
         w.0
     }
 }
+
+#[derive(Debug, PartialEq)]
+pub struct WithLen<T>(pub T);
+
+impl<T: BinProtWrite + BinProtSize> BinProtWrite for WithLen<T> {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        let len = self.0.binprot_size();
+        write_nat0(w, len as u64)?;
+        self.0.binprot_write(w)
+    }
+}
+
+impl<T: BinProtRead> BinProtRead for WithLen<T> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        // TODO: stop reading past this length
+        let _len = read_nat0(r)?;
+        let t = T::binprot_read(r)?;
+        Ok(WithLen(t))
+    }
+}

@@ -85,6 +85,11 @@ fn breakfast4() {
     test_roundtrip(breakfast, 6, None);
     test_roundtrip(BreakfastMenu::<i64>::Nothing, 1, None);
     test_roundtrip(BreakfastMenu::<i64>::Eggs(42), 2, None);
+    test_roundtrip(
+        binprot::WithLen(BreakfastMenu::<i64>::Eggs(42)),
+        3,
+        Some(&[2, 1, 42]),
+    );
 }
 
 #[derive(BinProtWrite, BinProtRead, Debug, PartialEq)]
