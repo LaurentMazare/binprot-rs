@@ -1,0 +1,12 @@
+[package]
+name = "binprot"
+version = "0.1.0"
+authors = ["laurent <laurent.mazare@gmail.com>"]
+edition = "2018"
+
+[workspace]
+members = ["binprot_derive"]
+
+[dependencies]
+byteorder = "1.4.3"
+binprot_derive = { version = "0.1", path = "binprot_derive" }
