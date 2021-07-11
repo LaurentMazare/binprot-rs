@@ -20,7 +20,7 @@ fn hash_variant(str: &str) -> i32 {
     for &v in str.as_bytes().iter() {
         accu = std::num::Wrapping(223) * accu + std::num::Wrapping(v as i64)
     }
-    accu = accu & std::num::Wrapping((1 << 31) - 1);
+    accu &= std::num::Wrapping((1 << 31) - 1);
     let accu = accu.0;
     if accu > 0x3FFFFFFF {
         (accu - (1 << 31)) as i32
