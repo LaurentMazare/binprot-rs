@@ -204,13 +204,41 @@ impl BinProtWrite for String {
     }
 }
 
-impl<A: BinProtWrite, B: BinProtWrite> BinProtWrite for (A, B) {
-    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
-        self.0.binprot_write(w)?;
-        self.1.binprot_write(w)?;
-        Ok(())
-    }
+macro_rules! tuple_impls {
+    ( $( $name:ident )+ ) => {
+        impl<$($name: BinProtWrite),+> BinProtWrite for ($($name,)+)
+        {
+            #[allow(non_snake_case)]
+            fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+                let ($($name,)+) = self;
+                $($name.binprot_write(w)?;)+
+                Ok(())
+            }
+        }
+
+        impl<$($name: BinProtRead),+> BinProtRead for ($($name,)+)
+        {
+            #[allow(non_snake_case)]
+            fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+            where
+                Self: Sized,
+            {
+                $(let $name = $name::binprot_read(r)?;)+
+                Ok(($($name,)+))
+            }
+        }
+    };
 }
+
+tuple_impls! { A }
+tuple_impls! { A B }
+tuple_impls! { A B C }
+tuple_impls! { A B C D }
+tuple_impls! { A B C D E }
+tuple_impls! { A B C D E F }
+tuple_impls! { A B C D E F G }
+tuple_impls! { A B C D E F G H }
+tuple_impls! { A B C D E F G H I }
 
 impl BinProtRead for Nat0 {
     fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
@@ -314,17 +342,6 @@ impl BinProtRead for String {
         r.read_exact(&mut buf)?;
         let str = std::str::from_utf8(&buf)?;
         Ok(str.to_string())
-    }
-}
-
-impl<A: BinProtRead, B: BinProtRead> BinProtRead for (A, B) {
-    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let a = A::binprot_read(r)?;
-        let b = B::binprot_read(r)?;
-        Ok((a, b))
     }
 }
 
