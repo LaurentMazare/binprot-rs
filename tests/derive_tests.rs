@@ -61,7 +61,12 @@ fn breakfast3() {
         value1: -1234567890123456,
         value2: (3.141592, 6535.8979),
     };
-    test_roundtrip(breakfasts, 37, None)
+    // Generated in ocaml.
+    let expected = [
+        12, 255, 133, 207, 95, 20, 139, 10, 191, 5, 64, 0, 252, 64, 69, 117, 195, 42, 157, 251,
+        255, 122, 0, 139, 252, 250, 33, 9, 64, 20, 63, 198, 220, 229, 135, 185, 64,
+    ];
+    test_roundtrip(breakfasts, 37, Some(&expected))
 }
 
 #[derive(BinProtWrite, BinProtRead, Debug, PartialEq)]
@@ -82,9 +87,11 @@ fn breakfast4() {
             eggs: 123,
             pancakes: 456,
         });
-    test_roundtrip(breakfast, 6, None);
+    let expected = [0, 5, 123, 254, 200, 1];
+    test_roundtrip(breakfast, 6, Some(&expected));
     test_roundtrip(BreakfastMenu::<i64>::Nothing, 1, None);
-    test_roundtrip(BreakfastMenu::<i64>::Eggs(42), 2, None);
+    let expected = [1, 42];
+    test_roundtrip(BreakfastMenu::<i64>::Eggs(42), 2, Some(&expected));
     test_roundtrip(
         binprot::WithLen(BreakfastMenu::<i64>::Eggs(42)),
         3,
@@ -101,6 +108,7 @@ struct BreakfastItem {
 
 #[test]
 fn breakfast5() {
+    let expected = [3, 101, 103, 103, 111, 18, 131, 192, 202, 33, 9, 64, 1];
     test_roundtrip(
         BreakfastItem {
             name: "egg".to_string(),
@@ -108,8 +116,11 @@ fn breakfast5() {
             large: true,
         },
         13,
-        None,
+        Some(&expected),
     );
+    let expected = [
+        9, 99, 114, 111, 105, 115, 115, 97, 110, 116, 0, 0, 0, 0, 128, 28, 200, 192, 0,
+    ];
     test_roundtrip(
         BreakfastItem {
             name: "croissant".to_string(),
@@ -117,15 +128,19 @@ fn breakfast5() {
             large: false,
         },
         19,
-        None,
+        Some(&expected),
     );
+    let expected = [
+        14, 80, 97, 105, 110, 65, 117, 67, 104, 111, 99, 111, 108, 97, 116, 0, 0, 0, 74, 120, 222,
+        177, 65, 0,
+    ];
     test_roundtrip(
         BreakfastItem {
             name: "PainAuChocolat".to_string(),
-            quantity: 299279458.0,
+            quantity: 299792458.0,
             large: false,
         },
         24,
-        None,
+        Some(&expected),
     );
 }
