@@ -10,3 +10,6 @@ members = ["binprot_derive"]
 [dependencies]
 byteorder = "1.4.3"
 binprot_derive = { version = "0.1", path = "binprot_derive" }
+
+[dev-dependencies]
+anyhow = "1"
