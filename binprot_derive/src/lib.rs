@@ -7,7 +7,35 @@ use syn::{
     parse_quote, DataEnum, DataUnion, DeriveInput, FieldsNamed, FieldsUnnamed, GenericParam,
 };
 
-#[proc_macro_derive(BinProtWrite, attributes(polymorphic))]
+fn has_polymorphic_variant_attr(ast: &DeriveInput) -> bool {
+    let DeriveInput { attrs, .. } = ast;
+    attrs.iter().any(|attr| {
+        attr.path.segments.len() == 1 && attr.path.segments[0].ident == "polymorphic_variant"
+    })
+}
+
+// The hash function used to get the identifier for polymorphic variants in OCaml
+fn hash_variant(str: &str) -> i32 {
+    let mut accu = std::num::Wrapping(0i64);
+    for &v in str.as_bytes().iter() {
+        accu = std::num::Wrapping(223) * accu + std::num::Wrapping(v as i64)
+    }
+    accu = accu & std::num::Wrapping((1 << 31) - 1);
+    let accu = accu.0;
+    if accu > 0x3FFFFFFF {
+        (accu - (1 << 31)) as i32
+    } else {
+        accu as i32
+    }
+}
+
+// https://github.com/janestreet/bin_prot/blob/5915cde59105f398b53f682c5f4dad29e272f696/src/write.ml#L387-L393
+fn variant_int(str: &str) -> i32 {
+    let v = hash_variant(str);
+    (v << 1) | 1
+}
+
+#[proc_macro_derive(BinProtWrite, attributes(polymorphic_variant))]
 pub fn binprot_write_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_binprot_write(&ast)
@@ -27,28 +55,34 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
         }
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let has_polymorphic_variant_attr = has_polymorphic_variant_attr(&ast);
 
     let impl_fn = match data {
-        syn::Data::Struct(s) => match &s.fields {
-            syn::Fields::Named(FieldsNamed { named, .. }) => {
-                let fields = named.iter().map(|field| {
-                    let name = field.ident.as_ref().unwrap();
-                    quote! { self.#name.binprot_write(__binprot_w)?; }
-                });
-                quote! {#(#fields)*}
+        syn::Data::Struct(s) => {
+            if has_polymorphic_variant_attr {
+                panic!("polymorphic_variant is only allowed on enum")
             }
-            syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
-                let num_fields = unnamed.len();
-                let fields = (0..num_fields).map(|index| {
-                    let index = syn::Index::from(index);
-                    quote! { self.#index.binprot_write(__binprot_w)?; }
-                });
-                quote! {#(#fields)*}
+            match &s.fields {
+                syn::Fields::Named(FieldsNamed { named, .. }) => {
+                    let fields = named.iter().map(|field| {
+                        let name = field.ident.as_ref().unwrap();
+                        quote! { self.#name.binprot_write(__binprot_w)?; }
+                    });
+                    quote! {#(#fields)*}
+                }
+                syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                    let num_fields = unnamed.len();
+                    let fields = (0..num_fields).map(|index| {
+                        let index = syn::Index::from(index);
+                        quote! { self.#index.binprot_write(__binprot_w)?; }
+                    });
+                    quote! {#(#fields)*}
+                }
+                syn::Fields::Unit => {
+                    unimplemented!()
+                }
             }
-            syn::Fields::Unit => {
-                unimplemented!()
-            }
-        },
+        }
         syn::Data::Enum(DataEnum {
             enum_token,
             variants,
@@ -60,7 +94,6 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                     .into();
             }
             let cases = variants.iter().enumerate().map(|(variant_index, variant)| {
-                let variant_index = variant_index as u8;
                 let variant_ident = &variant.ident;
                 let (pattern, actions) = match &variant.fields {
                     syn::Fields::Named(FieldsNamed { named, .. }) => {
@@ -82,9 +115,16 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                     }
                     syn::Fields::Unit => (quote! {}, quote! {}),
                 };
+                let variant_index = if !has_polymorphic_variant_attr {
+                    let variant_index = variant_index as u8;
+                    quote! { [#variant_index] }
+                } else {
+                    let variant_index: i32 = variant_int(&variant_ident.to_string());
+                    quote! { (#variant_index).to_le_bytes() }
+                };
                 quote! {
                     #ident::#variant_ident #pattern => {
-                        __binprot_w.write_all(&[#variant_index])?;
+                        __binprot_w.write_all(&#variant_index)?;
                         #actions
                     }
                 }
@@ -114,7 +154,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
     output.into()
 }
 
-#[proc_macro_derive(BinProtRead, attributes(polymorphic))]
+#[proc_macro_derive(BinProtRead, attributes(polymorphic_variant))]
 pub fn binprot_read_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_binprot_read(&ast)
@@ -134,34 +174,41 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
         }
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let has_polymorphic_variant_attr = has_polymorphic_variant_attr(&ast);
 
     let read_fn = match data {
-        syn::Data::Struct(s) => match &s.fields {
-            syn::Fields::Named(FieldsNamed { named, .. }) => {
-                let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
-                let mk_fields = named.iter().map(|field| {
-                    let name = field.ident.as_ref().unwrap();
-                    quote! { let #name = BinProtRead::binprot_read(__binprot_r)?; }
-                });
-                quote! {
-                    #(#mk_fields)*
-                    Ok(#ident { #(#fields),* })
-                }
+        syn::Data::Struct(s) => {
+            if has_polymorphic_variant_attr {
+                panic!("polymorphic_variant is only allowed on enum")
             }
-            syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
-                let num_fields = unnamed.len();
-                let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
-                let mk_fields = (0..num_fields).map(|index| {
-                    let ident = format_ident!("__field{}", index);
-                    quote! { let #ident = BinProtRead::binprot_read(__binprot_r)?; }
-                });
-                quote! {
-                    #(#mk_fields)*
-                    Ok(#ident(#(#fields),*))
+
+            match &s.fields {
+                syn::Fields::Named(FieldsNamed { named, .. }) => {
+                    let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
+                    let mk_fields = named.iter().map(|field| {
+                        let name = field.ident.as_ref().unwrap();
+                        quote! { let #name = BinProtRead::binprot_read(__binprot_r)?; }
+                    });
+                    quote! {
+                        #(#mk_fields)*
+                        Ok(#ident { #(#fields),* })
+                    }
                 }
+                syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                    let num_fields = unnamed.len();
+                    let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
+                    let mk_fields = (0..num_fields).map(|index| {
+                        let ident = format_ident!("__field{}", index);
+                        quote! { let #ident = BinProtRead::binprot_read(__binprot_r)?; }
+                    });
+                    quote! {
+                        #(#mk_fields)*
+                        Ok(#ident(#(#fields),*))
+                    }
+                }
+                syn::Fields::Unit => unimplemented!(),
             }
-            syn::Fields::Unit => unimplemented!(),
-        },
+        }
         syn::Data::Enum(DataEnum {
             enum_token,
             variants,
@@ -173,8 +220,14 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                     .into();
             }
             let cases = variants.iter().enumerate().map(|(variant_index, variant)| {
-                let variant_index = variant_index as u8;
                 let variant_ident = &variant.ident;
+                let variant_index = if !has_polymorphic_variant_attr {
+                    let variant_index = variant_index as u8;
+                    quote! { #variant_index }
+                } else {
+                    let variant_index: i32 = variant_int(&variant_ident.to_string());
+                    quote! { #variant_index }
+                };
                 let (mk_fields, fields) = match &variant.fields {
                     syn::Fields::Named(FieldsNamed { named, .. }) => {
                         let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
@@ -202,11 +255,21 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                     }
                 }
             });
-            quote! {
-                let variant_index = byteorder::ReadBytesExt::read_u8(__binprot_r)?;
-                match variant_index {
-                    #(#cases)*
-                    index => Err(binprot::Error::UnexpectedVariantIndex { index, ident: stringify!(#ident) } ),
+            if !has_polymorphic_variant_attr {
+                quote! {
+                    let variant_index = byteorder::ReadBytesExt::read_u8(__binprot_r)?;
+                    match variant_index {
+                        #(#cases)*
+                        index => Err(binprot::Error::UnexpectedVariantIndex { index, ident: stringify!(#ident) } ),
+                    }
+                }
+            } else {
+                quote! {
+                    let variant_index = byteorder::ReadBytesExt::read_i32::<byteorder::LittleEndian>(__binprot_r)?;
+                    match variant_index {
+                        #(#cases)*
+                        index => Err(binprot::Error::UnexpectedPolymorphicVariantIndex { index, ident: stringify!(#ident) } ),
+                    }
                 }
             }
         }
@@ -226,4 +289,17 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
     };
 
     output.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hash_variant() {
+        assert_eq!(hash_variant(""), 0);
+        assert_eq!(hash_variant("foo"), 5097222);
+        assert_eq!(hash_variant("FooBar"), 805748365);
+        assert_eq!(hash_variant("FooBarBazAndEvenMoreAlternatives"), 74946334);
+    }
 }

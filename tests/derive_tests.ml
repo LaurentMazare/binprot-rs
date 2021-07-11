@@ -80,8 +80,29 @@ module BreakfastMenu = struct
     print_binio t (bin_writer_t (bin_writer_t Int.bin_writer_t));
     let t = Eggs 42 in
     print_binio t (bin_writer_t (bin_writer_t Int.bin_writer_t));
-    [%expect
-      {|
+    [%expect {|
     (0 5 123 254 200 1)
     (1 42) |}]
+end
+
+module BreakfastPoly = struct
+  type 'a t =
+    [ `Any of 'a
+    | `Eggs of int
+    | `Pancakes of int
+    | `MorePancakes of MorePancakes.t
+    | `LotsOfPancakes of int * MorePancakes.t
+    | `Nothing
+    ]
+  [@@deriving bin_io]
+
+  let%expect_test _ =
+    let t = `Any (`MorePancakes (-123, 2.71828182846, 0)) in
+    print_binio t (bin_writer_t (bin_writer_t Int.bin_writer_t));
+    let t = `Eggs 42 in
+    print_binio t (bin_writer_t (bin_writer_t Int.bin_writer_t));
+    [%expect
+      {|
+    (153 101 99 0 39 152 92 190 255 133 207 95 20 139 10 191 5 64 0)
+    (93 118 212 91 42) |}]
 end

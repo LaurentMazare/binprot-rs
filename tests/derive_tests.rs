@@ -144,3 +144,34 @@ fn breakfast5() {
         Some(&expected),
     );
 }
+
+#[derive(BinProtWrite, BinProtRead, Debug, PartialEq)]
+#[polymorphic_variant]
+enum BreakfastPoly<T> {
+    Any(T),
+    Eggs(i64),
+    Pancakes(Pancakes),
+    MorePancakes(MorePancakes),
+    LotsOfPancakes(Pancakes, MorePancakes),
+    Everything { eggs: i64, pancakes: i64 },
+    Nothing,
+}
+
+#[test]
+fn breakfast6() {
+    let breakfast: BreakfastPoly<BreakfastPoly<i64>> = BreakfastPoly::Any(
+        BreakfastPoly::MorePancakes(MorePancakes(-123, 2.71828182846, 0)),
+    );
+    let expected = [
+        153, 101, 99, 0, 39, 152, 92, 190, 255, 133, 207, 95, 20, 139, 10, 191, 5, 64, 0,
+    ];
+    test_roundtrip(breakfast, 19, Some(&expected));
+    test_roundtrip(BreakfastPoly::<i64>::Nothing, 4, None);
+    let expected = [93, 118, 212, 91, 42];
+    test_roundtrip(BreakfastPoly::<i64>::Eggs(42), 5, Some(&expected));
+    test_roundtrip(
+        binprot::WithLen(BreakfastPoly::<i64>::Eggs(42)),
+        6,
+        Some(&[5, 93, 118, 212, 91, 42]),
+    );
+}

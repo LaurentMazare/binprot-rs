@@ -10,6 +10,7 @@ const CODE_INT64: u8 = 0xfc;
 pub enum Error {
     IoError(std::io::Error),
     UnexpectedVariantIndex { index: u8, ident: &'static str },
+    UnexpectedPolymorphicVariantIndex { index: i32, ident: &'static str },
     UnexpectedValueForUnit(u8),
     UnexpectedValueForBool(u8),
     UnexpectedValueForOption(u8),
