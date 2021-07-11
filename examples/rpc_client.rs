@@ -12,10 +12,30 @@ use std::net::TcpStream;
 #[derive(BinProtRead, BinProtWrite, Debug, Clone, PartialEq)]
 struct Handshake(Vec<i64>);
 
-#[derive(BinProtRead, BinProtWrite, Debug, Clone, PartialEq)]
+#[derive(BinProtRead, BinProtWrite, Clone, PartialEq)]
 enum Sexp {
     Atom(String),
     List(Vec<Sexp>),
+}
+
+// Dummy formatter, escaping is not handled properly.
+impl std::fmt::Debug for Sexp {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Sexp::Atom(atom) => fmt.write_str(&atom),
+            Sexp::List(list) => {
+                fmt.write_str("(")?;
+                for (index, sexp) in list.iter().enumerate() {
+                    if index > 0 {
+                        fmt.write_str(" ")?;
+                    }
+                    sexp.fmt(fmt)?;
+                }
+                fmt.write_str(")")?;
+                Ok(())
+            }
+        }
+    }
 }
 
 #[derive(BinProtRead, BinProtWrite, Debug, Clone, PartialEq)]
