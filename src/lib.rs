@@ -1,4 +1,4 @@
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
 const CODE_NEG_INT8: u8 = 0xff;
@@ -49,6 +49,21 @@ pub trait BinProtRead {
     fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
     where
         Self: Sized;
+}
+
+/// This uses the "size-prefixed binary protocol".
+/// https://ocaml.janestreet.com/ocaml-core/v0.13/doc/async_unix/Async_unix/Writer/index.html#val-write_bin_prot
+pub fn binprot_write_with_size<W: Write, B: BinProtWrite>(b: &B, w: &mut W) -> std::io::Result<()> {
+    let len = b.binprot_size();
+    w.write_i64::<byteorder::LittleEndian>(len as i64)?;
+    b.binprot_write(w)
+}
+
+/// This also uses the "size-prefixed binary protocol".
+pub fn binprot_read_with_size<R: Read, B: BinProtRead>(r: &mut R) -> Result<B, Error> {
+    // TODO: use the length value to avoid reading more that the specified number of bytes.
+    let _len = r.read_i64::<byteorder::LittleEndian>()?;
+    B::binprot_read(r)
 }
 
 fn write_nat0<W: Write>(w: &mut W, v: u64) -> std::io::Result<()> {

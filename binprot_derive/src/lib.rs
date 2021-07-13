@@ -1,4 +1,5 @@
 // TODO: maybe add also a deriver for BinProtSize?
+extern crate byteorder;
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
