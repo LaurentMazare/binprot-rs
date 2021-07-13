@@ -175,3 +175,19 @@ fn breakfast6() {
         Some(&[5, 93, 118, 212, 91, 42]),
     );
 }
+
+#[test]
+fn breakfast7() {
+    let price_and_quantities: std::collections::HashMap<String, (i64, f64)> = [
+        ("croissant", (4, 1.23)),
+        ("JusDOrange", (1, 2.34)),
+        ("PainAuChocolat", (2, 1.45)),
+    ]
+    .iter()
+    .map(|(x, y)| (x.to_string(), *y))
+    .collect();
+    test_roundtrip(price_and_quantities.clone(), 64, None);
+    let price_and_quantities: std::collections::BTreeMap<String, (i64, f64)> =
+        price_and_quantities.into_iter().collect();
+    test_roundtrip(price_and_quantities, 64, None);
+}

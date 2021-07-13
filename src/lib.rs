@@ -1,4 +1,5 @@
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::hash::Hash;
 use std::io::{Read, Write};
 
 const CODE_NEG_INT8: u8 = 0xff;
@@ -15,6 +16,7 @@ pub enum Error {
     UnexpectedValueForBool(u8),
     UnexpectedValueForOption(u8),
     Utf8Error(std::str::Utf8Error),
+    SameKeyAppearsTwiceInMap,
 }
 
 impl std::fmt::Display for Error {
@@ -219,6 +221,38 @@ impl BinProtWrite for String {
     }
 }
 
+impl BinProtWrite for &str {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        let bytes = self.as_bytes();
+        write_nat0(w, bytes.len() as u64)?;
+        w.write_all(&bytes)
+    }
+}
+
+impl<K: BinProtWrite, V: BinProtWrite> BinProtWrite for std::collections::BTreeMap<K, V> {
+    // The order is unspecified by the protocol
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        write_nat0(w, self.len() as u64)?;
+        for (k, v) in self.iter() {
+            k.binprot_write(w)?;
+            v.binprot_write(w)?;
+        }
+        Ok(())
+    }
+}
+
+impl<K: BinProtWrite, V: BinProtWrite> BinProtWrite for std::collections::HashMap<K, V> {
+    // The order is unspecified by the protocol
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        write_nat0(w, self.len() as u64)?;
+        for (k, v) in self.iter() {
+            k.binprot_write(w)?;
+            v.binprot_write(w)?;
+        }
+        Ok(())
+    }
+}
+
 macro_rules! tuple_impls {
     ( $( $name:ident )+ ) => {
         impl<$($name: BinProtWrite),+> BinProtWrite for ($($name,)+)
@@ -344,6 +378,42 @@ impl<T: BinProtRead> BinProtRead for Vec<T> {
             v.push(item)
         }
         Ok(v)
+    }
+}
+
+impl<K: BinProtRead + Ord, V: BinProtRead> BinProtRead for std::collections::BTreeMap<K, V> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let len = read_nat0(r)?;
+        let mut res = std::collections::BTreeMap::new();
+        for _i in 0..len {
+            let k = K::binprot_read(r)?;
+            let v = V::binprot_read(r)?;
+            if res.insert(k, v).is_some() {
+                return Err(Error::SameKeyAppearsTwiceInMap);
+            }
+        }
+        Ok(res)
+    }
+}
+
+impl<K: BinProtRead + Hash + Eq, V: BinProtRead> BinProtRead for std::collections::HashMap<K, V> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let len = read_nat0(r)?;
+        let mut res = std::collections::HashMap::new();
+        for _i in 0..len {
+            let k = K::binprot_read(r)?;
+            let v = V::binprot_read(r)?;
+            if res.insert(k, v).is_some() {
+                return Err(Error::SameKeyAppearsTwiceInMap);
+            }
+        }
+        Ok(res)
     }
 }
 
