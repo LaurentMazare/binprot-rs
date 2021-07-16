@@ -7,7 +7,7 @@ use anyhow::Result;
 use binprot::{BinProtRead, BinProtSize, BinProtWrite};
 use binprot_derive::{BinProtRead, BinProtWrite};
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 
 #[derive(BinProtRead, BinProtWrite, Debug, Clone, PartialEq)]
 struct Handshake(Vec<i64>);
@@ -187,19 +187,66 @@ impl RpcClient {
     }
 }
 
+struct RpcServer {
+    listener: TcpListener,
+    buffer: Vec<u8>,
+    id: i64,
+}
+
+impl RpcServer {
+    fn bind(address: &str) -> Result<Self> {
+        let listener = TcpListener::bind(address)?;
+        let buffer = vec![0u8; 256];
+        println!("Successfully bound to {}", address);
+        Ok(RpcServer {
+            listener,
+            buffer,
+            id: 0,
+        })
+    }
+
+    fn run(&mut self) -> Result<()> {
+        for stream in self.listener.incoming() {
+            let mut stream = stream?;
+            println!("Got connection {:?}.", stream);
+            write_bin_prot(&mut stream, &Handshake(vec![4411474, 1]))?;
+            println!("Sent handshake");
+            let handshake: Handshake = read_bin_prot(&mut stream, &mut self.buffer)?;
+            println!("Received {:?}", handshake);
+        }
+        Ok(())
+    }
+}
+
 fn main() -> Result<()> {
-    let mut client = RpcClient::connect("localhost:8080")?;
-    let response = client.dispatch::<RpcGetUniqueId>(())?;
-    println!(">> {:?}", response);
-    let response = client.dispatch::<RpcGetUniqueId>(())?;
-    println!(">> {:?}", response);
-    let response = client.dispatch::<RpcSetIdCounter>(42)?;
-    println!(">> {:?}", response);
-    let response = client.dispatch::<RpcGetUniqueId>(())?;
-    println!(">> {:?}", response);
-    let response = client.dispatch::<RpcSetIdCounter>(0)?;
-    println!(">> {:?}", response);
-    let response = client.dispatch::<RpcGetUniqueIdTypo>(())?;
-    println!(">> {:?}", response);
+    let arg = std::env::args().skip(1).next();
+
+    match arg.as_deref() {
+        Some("client") => {
+            let mut client = RpcClient::connect("localhost:8080")?;
+            let response = client.dispatch::<RpcGetUniqueId>(())?;
+            println!(">> {:?}", response);
+            let response = client.dispatch::<RpcGetUniqueId>(())?;
+            println!(">> {:?}", response);
+            let response = client.dispatch::<RpcSetIdCounter>(42)?;
+            println!(">> {:?}", response);
+            let response = client.dispatch::<RpcGetUniqueId>(())?;
+            println!(">> {:?}", response);
+            let response = client.dispatch::<RpcSetIdCounter>(0)?;
+            println!(">> {:?}", response);
+            let response = client.dispatch::<RpcGetUniqueIdTypo>(())?;
+            println!(">> {:?}", response);
+        }
+        Some("server") => {
+            let mut server = RpcServer::bind("localhost:8080")?;
+            server.run()?
+        }
+        Some(_) => {
+            panic!("unexpected argument, try client or server")
+        }
+        None => {
+            panic!("missing argument")
+        }
+    }
     Ok(())
 }
