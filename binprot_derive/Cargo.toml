@@ -9,7 +9,6 @@ repository = "https://github.com/LaurentMazare/binprot-rs"
 keywords = ["bin_prot", "protocol", "macro"]
 categories = ["Network programming"]
 license = "MIT/Apache-2.0"
-readme = "README.md"
 
 [lib]
 proc-macro = true
