@@ -6,6 +6,7 @@
 use anyhow::Result;
 use binprot::{BinProtRead, BinProtSize, BinProtWrite};
 use binprot_derive::{BinProtRead, BinProtWrite};
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 
@@ -104,7 +105,7 @@ fn read_bin_prot<T: BinProtRead>(stream: &mut TcpStream, buffer: &mut Vec<u8>) -
 }
 
 fn write_bin_prot<T: BinProtWrite>(stream: &mut TcpStream, v: &T) -> Result<()> {
-    let len = v.binprot_size();
+    let len = v.binprot_size() as i64;
     stream.write_all(&len.to_le_bytes())?;
     v.binprot_write(stream)?;
     Ok(())
@@ -188,19 +189,44 @@ impl RpcClient {
 }
 
 trait JRpcImpl {
-    type Q;
-    type R;
+    type Q; // Query
+    type R; // Response
+    type E; // Error
 
-    fn rpc_impl(&mut self, q: &Self::Q) -> Result<Self::R>;
+    fn rpc_impl(&mut self, q: Self::Q) -> std::result::Result<Self::R, Self::E>;
 }
 
 trait ErasedJRpcImpl {
-    fn erased_rpc_impl(&mut self, stream: &TcpStream) -> Result<()>;
+    fn erased_rpc_impl(&mut self, stream: &mut TcpStream, id: i64) -> Result<()>;
 }
 
-impl<Q: BinProtRead, R: BinProtWrite> ErasedJRpcImpl for dyn JRpcImpl<Q = Q, R = R> {
-    fn erased_rpc_impl(&mut self, stream: &TcpStream) -> Result<()> {
-        unimplemented!()
+//impl<Q, R, E> ErasedJRpcImpl for dyn JRpcImpl<Q = Q, R = R, E = E>
+//where
+//   Q: BinProtRead,
+//    R: BinProtWrite,
+//    E: std::error::Error,
+impl<T> ErasedJRpcImpl for T
+where
+    T: JRpcImpl,
+    T::Q: BinProtRead,
+    T::R: BinProtWrite,
+    T::E: std::error::Error,
+{
+    fn erased_rpc_impl(&mut self, stream: &mut TcpStream, id: i64) -> Result<()> {
+        let query = T::Q::binprot_read(stream)?;
+        let rpc_result = match self.rpc_impl(query) {
+            Ok(response) => RpcResult::Ok(binprot::WithLen(response)),
+            Err(error) => {
+                let sexp = Sexp::Atom(error.to_string());
+                RpcResult::Error(RpcError::UncaughtExn(sexp))
+            }
+        };
+        let response = Response {
+            id,
+            data: rpc_result,
+        };
+        write_bin_prot(stream, &Message::Response::<(), T::R>(response))?;
+        Ok(())
     }
 }
 
@@ -208,7 +234,41 @@ struct RpcServer {
     listener: TcpListener,
     buffer: Vec<u8>,
     id: i64,
-    rpc_impls: std::collections::BTreeMap<String, Box<dyn ErasedJRpcImpl>>,
+    rpc_impls: BTreeMap<String, Box<dyn ErasedJRpcImpl>>,
+}
+
+struct GetUniqueIdImpl(i64);
+
+impl JRpcImpl for GetUniqueIdImpl {
+    type Q = ();
+    type R = i64;
+    type E = std::convert::Infallible;
+
+    fn rpc_impl(&mut self, _q: Self::Q) -> std::result::Result<Self::R, Self::E> {
+        let result = self.0;
+        self.0 += 1;
+        Ok(result)
+    }
+}
+
+// It is not easy to use [Query] on the server side as we do not
+// know which rpcs will be triggered. So instead we use this type
+// that only parses up to the length of the payload.
+// This only works because the payload appears last in the
+// serialized representation
+#[derive(BinProtRead, BinProtWrite, Debug, Clone, PartialEq)]
+struct ServerQuery {
+    rpc_tag: String,
+    version: i64,
+    id: i64,
+    data: binprot::Nat0,
+}
+
+#[derive(BinProtRead, BinProtWrite, Debug, Clone, PartialEq)]
+enum ServerMessage<R> {
+    Heartbeat,
+    Query(ServerQuery),
+    Response(R),
 }
 
 impl RpcServer {
@@ -216,11 +276,14 @@ impl RpcServer {
         let listener = TcpListener::bind(address)?;
         let buffer = vec![0u8; 256];
         println!("Successfully bound to {}", address);
+        let mut rpc_impls: BTreeMap<String, Box<dyn ErasedJRpcImpl>> = BTreeMap::new();
+        let get_unique_id_impl: Box<dyn ErasedJRpcImpl> = Box::new(GetUniqueIdImpl(0));
+        rpc_impls.insert("get-unique-id".to_string(), get_unique_id_impl);
         Ok(RpcServer {
             listener,
             buffer,
             id: 0,
-            rpc_impls: std::collections::BTreeMap::new(),
+            rpc_impls,
         })
     }
 
@@ -229,9 +292,37 @@ impl RpcServer {
             let mut stream = stream?;
             println!("Got connection {:?}.", stream);
             write_bin_prot(&mut stream, &Handshake(vec![4411474, 1]))?;
-            println!("Sent handshake");
             let handshake: Handshake = read_bin_prot(&mut stream, &mut self.buffer)?;
-            println!("Received {:?}", handshake);
+            println!("Received handshake {:?}", handshake);
+            let mut recv_bytes = [0u8; 8];
+            loop {
+                // We don't know the type of rpcs that will be received so the
+                // following parses the incoming messages in a "manual" way.
+                stream.read_exact(&mut recv_bytes)?;
+                let _recv_len = i64::from_le_bytes(recv_bytes);
+                let query = ServerMessage::<()>::binprot_read(&mut stream)?;
+                println!("Received rpc query {:?}", query);
+                match query {
+                    ServerMessage::Heartbeat => unimplemented!(),
+                    ServerMessage::Query(query) => match self.rpc_impls.get_mut(&query.rpc_tag) {
+                        None => {
+                            let err = RpcError::UnimplementedRpc((
+                                query.rpc_tag,
+                                Version::Version(query.version),
+                            ));
+                            let message = ServerMessage::Response(Response::<()> {
+                                id: query.id,
+                                data: RpcResult::Error(err),
+                            });
+                            self.buffer.resize(query.data.0 as usize, 0u8);
+                            stream.read_exact(&mut self.buffer)?;
+                            write_bin_prot(&mut stream, &message)?
+                        }
+                        Some(r) => r.erased_rpc_impl(&mut stream, query.id)?,
+                    },
+                    ServerMessage::Response(()) => unimplemented!(),
+                };
+            }
         }
         Ok(())
     }

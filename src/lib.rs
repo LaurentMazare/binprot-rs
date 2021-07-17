@@ -25,7 +25,7 @@ pub fn binprot_read_with_size<R: Read, B: BinProtRead>(r: &mut R) -> Result<B, E
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub struct Nat0(u64);
+pub struct Nat0(pub u64);
 
 impl BinProtWrite for Nat0 {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
