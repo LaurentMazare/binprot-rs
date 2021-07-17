@@ -303,7 +303,7 @@ impl RpcServer {
                 let query = ServerMessage::<()>::binprot_read(&mut stream)?;
                 println!("Received rpc query {:?}", query);
                 match query {
-                    ServerMessage::Heartbeat => unimplemented!(),
+                    ServerMessage::Heartbeat => {}
                     ServerMessage::Query(query) => match self.rpc_impls.get_mut(&query.rpc_tag) {
                         None => {
                             let err = RpcError::UnimplementedRpc((
