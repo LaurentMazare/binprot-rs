@@ -187,10 +187,28 @@ impl RpcClient {
     }
 }
 
+trait JRpcImpl {
+    type Q;
+    type R;
+
+    fn rpc_impl(&mut self, q: &Self::Q) -> Result<Self::R>;
+}
+
+trait ErasedJRpcImpl {
+    fn erased_rpc_impl(&mut self, stream: &TcpStream) -> Result<()>;
+}
+
+impl<Q: BinProtRead, R: BinProtWrite> ErasedJRpcImpl for dyn JRpcImpl<Q = Q, R = R> {
+    fn erased_rpc_impl(&mut self, stream: &TcpStream) -> Result<()> {
+        unimplemented!()
+    }
+}
+
 struct RpcServer {
     listener: TcpListener,
     buffer: Vec<u8>,
     id: i64,
+    rpc_impls: std::collections::BTreeMap<String, Box<dyn ErasedJRpcImpl>>,
 }
 
 impl RpcServer {
@@ -202,6 +220,7 @@ impl RpcServer {
             listener,
             buffer,
             id: 0,
+            rpc_impls: std::collections::BTreeMap::new(),
         })
     }
 
