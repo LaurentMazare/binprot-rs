@@ -4,6 +4,13 @@ version = "0.1.0"
 authors = ["laurent <laurent.mazare@gmail.com>"]
 edition = "2018"
 
+description = "Derive macro for the bin_prot protocol."
+repository = "https://github.com/LaurentMazare/binprot-rs"
+keywords = ["bin_prot", "protocol", "macro"]
+categories = ["Network programming"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+
 [lib]
 proc-macro = true
 
