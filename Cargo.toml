@@ -17,6 +17,11 @@ members = ["binprot_derive"]
 [dependencies]
 byteorder = "1.4.3"
 binprot_derive = { version = "0.1", path = "binprot_derive" }
+async-trait = { version = "0.1.50", optional = true }
+tokio = { version = "1.8", optional = true, features = ["io-util"] }
 
 [dev-dependencies]
 anyhow = "1"
+
+[features]
+async = ["binprot_derive/async", "async-trait", "tokio"]

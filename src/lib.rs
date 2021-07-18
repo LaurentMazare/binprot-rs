@@ -1,3 +1,6 @@
+#[cfg(feature = "async")]
+mod async_traits;
+
 mod error;
 mod int;
 mod traits;
