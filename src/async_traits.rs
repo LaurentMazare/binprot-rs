@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[async_trait]
 pub trait BinProtWriteAsync {
