@@ -310,6 +310,8 @@ impl BinProtRead for String {
     }
 }
 
+/// A value serialized by first having its size as a nat0, then the
+/// encoding of the value itself.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WithLen<T>(pub T);
 
@@ -330,5 +332,30 @@ impl<T: BinProtRead> BinProtRead for WithLen<T> {
         let _len = int::read_nat0(r)?;
         let t = T::binprot_read(r)?;
         Ok(WithLen(t))
+    }
+}
+
+/// A buffer serialized as its size first as a nat0, then the payload itself.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BufferWithLen(pub Vec<u8>);
+
+impl BinProtRead for BufferWithLen {
+    fn binprot_read<R: std::io::Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let len = Nat0::binprot_read(r)?;
+        let mut buf: Vec<u8> = vec![0u8; len.0 as usize];
+        r.read_exact(&mut buf)?;
+        Ok(BufferWithLen(buf))
+    }
+}
+
+impl BinProtWrite for BufferWithLen {
+    fn binprot_write<W: std::io::Write>(&self, w: &mut W) -> Result<(), std::io::Error> {
+        let nat0 = Nat0(self.0.len() as u64);
+        nat0.binprot_write(w)?;
+        w.write_all(&self.0)?;
+        Ok(())
     }
 }

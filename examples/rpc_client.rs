@@ -230,6 +230,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 struct RpcServer {
     listener: TcpListener,
     buffer: Vec<u8>,
