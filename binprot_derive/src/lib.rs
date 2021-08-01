@@ -56,7 +56,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
         }
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let has_polymorphic_variant_attr = has_polymorphic_variant_attr(&ast);
+    let has_polymorphic_variant_attr = has_polymorphic_variant_attr(ast);
 
     let impl_fn = match data {
         syn::Data::Struct(s) => {
@@ -175,7 +175,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
         }
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let has_polymorphic_variant_attr = has_polymorphic_variant_attr(&ast);
+    let has_polymorphic_variant_attr = has_polymorphic_variant_attr(ast);
 
     let read_fn = match data {
         syn::Data::Struct(s) => {

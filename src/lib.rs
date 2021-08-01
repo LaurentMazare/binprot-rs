@@ -97,7 +97,7 @@ impl BinProtWrite for String {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         let bytes = self.as_bytes();
         int::write_nat0(w, bytes.len() as u64)?;
-        w.write_all(&bytes)
+        w.write_all(bytes)
     }
 }
 
@@ -105,7 +105,7 @@ impl BinProtWrite for &str {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         let bytes = self.as_bytes();
         int::write_nat0(w, bytes.len() as u64)?;
-        w.write_all(&bytes)
+        w.write_all(bytes)
     }
 }
 
