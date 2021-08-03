@@ -3,9 +3,11 @@ mod async_traits;
 
 mod error;
 mod int;
+mod shape;
 mod traits;
 
 pub use crate::error::Error;
+pub use crate::shape::Shape;
 pub use crate::traits::{BinProtRead, BinProtSize, BinProtWrite};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
