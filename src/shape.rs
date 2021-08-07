@@ -1,11 +1,16 @@
 // Support for bin_prot_shape like digest computation.
 // https://github.com/janestreet/bin_prot/tree/master/shape
+// TODO: handle recursive types!
 use std::collections::BTreeMap;
+
+// In the OCaml version, uuids are used as strings.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Uuid(String);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Shape<T> {
-    Annotate(uuid::Uuid, T),
-    Base(uuid::Uuid, Vec<T>),
+    Annotate(Uuid, T),
+    Base(Uuid, Vec<T>),
     Tuple(Vec<T>),
     Record(Vec<(String, T)>),
     Variant(Vec<(String, Vec<T>)>),
@@ -23,6 +28,12 @@ pub enum Shape<T> {
 
 trait Digestible {
     fn digest(&self) -> md5::Digest;
+}
+
+impl Digestible for Uuid {
+    fn digest(&self) -> md5::Digest {
+        md5::compute(&self.0)
+    }
 }
 
 impl<T: Digestible> Digestible for (String, T) {
@@ -91,51 +102,82 @@ impl Digestible for String {
     }
 }
 
+struct Constructor {
+    context: md5::Context,
+    inner: md5::Context,
+}
+
+impl Constructor {
+    fn new(cons_name: &str) -> Constructor {
+        let mut context = md5::Context::new();
+        let inner = md5::Context::new();
+        context.consume(cons_name);
+        Constructor { context, inner }
+    }
+
+    fn add_digest<T: Digestible>(mut self, t: &T) -> Self {
+        self.inner.consume(<[u8; 16]>::from(t.digest()));
+        self
+    }
+
+    fn finish(mut self) -> md5::Digest {
+        self.context.consume(<[u8; 16]>::from(self.inner.compute()));
+        self.context.compute()
+    }
+}
+
 impl<T: Digestible> Digestible for Shape<T> {
     fn digest(&self) -> md5::Digest {
-        let mut context = md5::Context::new();
         match self {
-            Shape::Annotate(uuid, t) => {
-                context.consume("annotate");
-                context.consume(uuid.as_bytes());
-                context.consume(<[u8; 16]>::from(t.digest()));
-            }
-            Shape::Base(uuid, vec) => {
-                context.consume("base");
-                context.consume(uuid.as_bytes());
-                context.consume(<[u8; 16]>::from(vec.digest()))
-            }
-            Shape::Tuple(vec) => {
-                context.consume("tuple");
-                context.consume(<[u8; 16]>::from(vec.digest()))
-            }
-            Shape::Record(vec) => {
-                context.consume("record");
-                context.consume(<[u8; 16]>::from(vec.digest()))
-            }
-            Shape::Variant(vec) => {
-                context.consume("variant");
-                context.consume(<[u8; 16]>::from(vec.digest()))
-            }
-            Shape::PolyVariant(map) => {
-                context.consume("poly_variant");
-                context.consume(<[u8; 16]>::from(map.digest()))
-            }
-            Shape::RecApp(n, vec) => {
-                context.consume("rec_app");
-                context.consume(<[u8; 16]>::from(md5::compute(n.to_string())));
-                context.consume(<[u8; 16]>::from(vec.digest()))
-            }
-            Shape::Application(t, vec) => {
-                context.consume("application");
-                context.consume(<[u8; 16]>::from(t.digest()));
-                context.consume(<[u8; 16]>::from(vec.digest()))
-            }
-            Shape::Var(v) => {
-                context.consume("var");
-                context.consume(<[u8; 16]>::from(md5::compute(v.to_string())));
-            }
+            Shape::Annotate(uuid, t) => Constructor::new("annotate")
+                .add_digest(uuid)
+                .add_digest(t)
+                .finish(),
+            Shape::Base(uuid, vec) => Constructor::new("base")
+                .add_digest(uuid)
+                .add_digest(vec)
+                .finish(),
+            Shape::Tuple(vec) => Constructor::new("tuple").add_digest(vec).finish(),
+            Shape::Record(vec) => Constructor::new("record").add_digest(vec).finish(),
+            Shape::Variant(vec) => Constructor::new("variant").add_digest(vec).finish(),
+            Shape::PolyVariant(map) => Constructor::new("poly_variant").add_digest(map).finish(),
+            Shape::RecApp(n, vec) => Constructor::new("rec_app")
+                .add_digest(&n.to_string())
+                .add_digest(vec)
+                .finish(),
+            Shape::Application(t, vec) => Constructor::new("application")
+                .add_digest(t)
+                .add_digest(vec)
+                .finish(),
+            Shape::Var(v) => Constructor::new("var").add_digest(&v.to_string()).finish(),
         }
-        context.compute()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    impl From<&str> for Uuid {
+        fn from(s: &str) -> Self {
+            Uuid(s.to_string())
+        }
+    }
+
+    fn base(s: &str) -> Shape<String> {
+        Shape::<String>::Base(Uuid::from(s), vec![])
+    }
+
+    #[test]
+    fn shape_digest() {
+        let digest = format!("{:x}", base("int").digest());
+        assert_eq!(digest, "698cfa4093fe5e51523842d37b92aeac");
+        let digest = format!("{:x}", base("int64").digest());
+        assert_eq!(digest, "0078f5c24ad346a7066cb6673cd5c3cb");
+        let digest = format!(
+            "{:x}",
+            Shape::Record(vec![("t".to_string(), base("int"))]).digest()
+        );
+        assert_eq!(digest, "43fa87a0bac7a0bb295f67cdc685aa26");
     }
 }
