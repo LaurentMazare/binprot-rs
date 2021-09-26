@@ -106,3 +106,28 @@ module BreakfastPoly = struct
     (153 101 99 0 39 152 92 190 255 133 207 95 20 139 10 191 5 64 0)
     (93 118 212 91 42) |}]
 end
+
+module BreakfastRec = struct
+  type t =
+    | Empty
+    | Cons of MorePancakes.t * t
+  [@@deriving bin_io, sexp_of]
+
+  let%expect_test _ =
+    let rec create = function
+      | 0 -> Empty
+      | size ->
+        let i = size - 1 in
+        Cons ((i, 3.14, i * i), create (size - 1))
+    in
+    let t = create 0 in
+    print_binio t bin_writer_t;
+    let t = create 1 in
+    print_binio t bin_writer_t;
+    let t = create 5 in
+    print_binio t bin_writer_t;
+    [%expect {|
+    (0)
+    (1 0 31 133 235 81 184 30 9 64 0 0)
+    (1 4 31 133 235 81 184 30 9 64 16 1 3 31 133 235 81 184 30 9 64 9 1 2 31 133 235 81 184 30 9 64 4 1 1 31 133 235 81 184 30 9 64 1 1 0 31 133 235 81 184 30 9 64 0 0) |}]
+end

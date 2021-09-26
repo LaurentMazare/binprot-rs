@@ -75,6 +75,12 @@ impl<T: BinProtWrite> BinProtWrite for Option<T> {
     }
 }
 
+impl<T: BinProtWrite> BinProtWrite for Box<T> {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        self.as_ref().binprot_write(w)
+    }
+}
+
 impl<T: BinProtWrite> BinProtWrite for Vec<T> {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         int::write_nat0(w, self.len() as u64)?;
@@ -245,6 +251,16 @@ impl<T: BinProtRead> BinProtRead for Option<T> {
         } else {
             Err(Error::UnexpectedValueForOption(c))
         }
+    }
+}
+
+impl<T: BinProtRead> BinProtRead for Box<T> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let v = T::binprot_read(r)?;
+        Ok(Box::new(v))
     }
 }
 

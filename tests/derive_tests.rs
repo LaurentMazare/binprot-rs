@@ -191,3 +191,42 @@ fn breakfast7() {
         price_and_quantities.into_iter().collect();
     test_roundtrip(price_and_quantities, 64, None);
 }
+
+#[derive(BinProtRead, BinProtWrite, Debug, PartialEq)]
+enum BreakfastRec {
+    Empty,
+    Cons(MorePancakes, Box<BreakfastRec>),
+}
+
+impl BreakfastRec {
+    fn create(size: i64) -> BreakfastRec {
+        let mut res = BreakfastRec::Empty;
+        for i in 0..size {
+            res = BreakfastRec::Cons(MorePancakes(i, 3.14, i * i), Box::new(res))
+        }
+        res
+    }
+}
+
+#[test]
+fn breakfast_rec() {
+    let breakfast_rec = BreakfastRec::create(0);
+    let expected = [0];
+    test_roundtrip(breakfast_rec, 1, Some(&expected));
+    let breakfast_rec = BreakfastRec::create(1);
+    let expected = [1, 0, 31, 133, 235, 81, 184, 30, 9, 64, 0, 0];
+    test_roundtrip(breakfast_rec, 12, Some(&expected));
+    let breakfast_rec = BreakfastRec::create(5);
+    let expected = [
+        1, 4, 31, 133, 235, 81, 184, 30, 9, 64, 16, 1, 3, 31, 133, 235, 81, 184, 30, 9, 64, 9, 1,
+        2, 31, 133, 235, 81, 184, 30, 9, 64, 4, 1, 1, 31, 133, 235, 81, 184, 30, 9, 64, 1, 1, 0,
+        31, 133, 235, 81, 184, 30, 9, 64, 0, 0,
+    ];
+    test_roundtrip(breakfast_rec, 56, Some(&expected));
+    let breakfast_rec = BreakfastRec::create(10);
+    test_roundtrip(breakfast_rec, 111, None);
+    let breakfast_rec = BreakfastRec::create(100);
+    test_roundtrip(breakfast_rec, 1277, None);
+    let breakfast_rec = BreakfastRec::create(1000);
+    test_roundtrip(breakfast_rec, 16357, None);
+}
