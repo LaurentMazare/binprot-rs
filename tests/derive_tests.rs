@@ -230,3 +230,33 @@ fn breakfast_rec() {
     let breakfast_rec = BreakfastRec::create(1000);
     test_roundtrip(breakfast_rec, 16357, None);
 }
+
+#[derive(BinProtRead, BinProtWrite, Debug, PartialEq)]
+struct BreakfastStr {
+    str: String,
+    bytes: binprot::Bytes,
+}
+#[test]
+fn breakfast_str() {
+    let breakfast_str = BreakfastStr {
+        str: "pancakes".to_string(),
+        bytes: "more-pancakes".to_string().into(),
+    };
+    let expected = [
+        8, 112, 97, 110, 99, 97, 107, 101, 115, 13, 109, 111, 114, 101, 45, 112, 97, 110, 99, 97,
+        107, 101, 115,
+    ];
+    test_roundtrip(breakfast_str, 23, Some(&expected));
+
+    let bytes: binprot::Bytes = vec![0, 255, 1, 254].into();
+    let mut data: Vec<u8> = Vec::new();
+    bytes.binprot_write(&mut data).unwrap();
+    let mut slice = data.as_slice();
+    assert_eq!(slice, [4, 0, 255, 1, 254]);
+    let bytes2 = binprot::Bytes::binprot_read(&mut slice).unwrap();
+    assert_eq!(bytes, bytes2);
+
+    // The bytes data is not utf8 encoded so result in an error when using String.
+    let err = String::binprot_read(&mut data.as_slice());
+    assert!(err.is_err())
+}

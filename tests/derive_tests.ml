@@ -126,8 +126,24 @@ module BreakfastRec = struct
     print_binio t bin_writer_t;
     let t = create 5 in
     print_binio t bin_writer_t;
-    [%expect {|
+    [%expect
+      {|
     (0)
     (1 0 31 133 235 81 184 30 9 64 0 0)
     (1 4 31 133 235 81 184 30 9 64 16 1 3 31 133 235 81 184 30 9 64 9 1 2 31 133 235 81 184 30 9 64 4 1 1 31 133 235 81 184 30 9 64 1 1 0 31 133 235 81 184 30 9 64 0 0) |}]
+end
+
+module BreakfastStr = struct
+  type t =
+    { str : string
+    ; bytes : bytes
+    }
+  [@@deriving bin_io, sexp_of]
+
+  let%expect_test _ =
+    let t = { str = "pancakes"; bytes = Bytes.of_string "more-pancakes" } in
+    print_binio t bin_writer_t;
+    [%expect
+      {|
+    (8 112 97 110 99 97 107 101 115 13 109 111 114 101 45 112 97 110 99 97 107 101 115) |}]
 end

@@ -32,6 +32,27 @@ pub fn binprot_read_with_size<R: Read, B: BinProtRead>(r: &mut R) -> Result<B, E
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct Nat0(pub u64);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Bytes(pub Vec<u8>);
+
+impl std::convert::From<String> for Bytes {
+    fn from(str: String) -> Self {
+        Bytes(str.into_bytes())
+    }
+}
+
+impl std::convert::From<&str> for Bytes {
+    fn from(str: &str) -> Self {
+        Bytes(str.as_bytes().to_vec())
+    }
+}
+
+impl std::convert::From<Vec<u8>> for Bytes {
+    fn from(v: Vec<u8>) -> Self {
+        Bytes(v)
+    }
+}
+
 impl BinProtWrite for Nat0 {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         int::write_nat0(w, self.0)
@@ -112,6 +133,14 @@ impl BinProtWrite for String {
 impl BinProtWrite for &str {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         let bytes = self.as_bytes();
+        int::write_nat0(w, bytes.len() as u64)?;
+        w.write_all(bytes)
+    }
+}
+
+impl BinProtWrite for Bytes {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        let bytes = &self.0;
         int::write_nat0(w, bytes.len() as u64)?;
         w.write_all(bytes)
     }
@@ -325,6 +354,18 @@ impl BinProtRead for String {
         r.read_exact(&mut buf)?;
         let str = std::str::from_utf8(&buf)?;
         Ok(str.to_string())
+    }
+}
+
+impl BinProtRead for Bytes {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let len = int::read_nat0(r)?;
+        let mut buf: Vec<u8> = vec![0u8; len as usize];
+        r.read_exact(&mut buf)?;
+        Ok(Bytes(buf))
     }
 }
 
