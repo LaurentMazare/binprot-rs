@@ -2,11 +2,11 @@ use crate::error::Error;
 use crate::{BinProtRead, BinProtWrite};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-pub struct Buffer(Vec<u8>);
+pub struct AsyncBuffer(Vec<u8>);
 
-impl Buffer {
+impl AsyncBuffer {
     pub fn new(buf_size: usize) -> Self {
-        Buffer(Vec::with_capacity(buf_size))
+        AsyncBuffer(Vec::with_capacity(buf_size))
     }
 
     pub async fn read_with_size<T: BinProtRead, R: AsyncReadExt + Unpin>(
@@ -23,7 +23,7 @@ impl Buffer {
         Ok(data)
     }
 
-    pub async fn write_bin_prot<T: BinProtWrite, W: AsyncWriteExt + Unpin>(
+    pub async fn write_with_size<T: BinProtWrite, W: AsyncWriteExt + Unpin>(
         &mut self,
         w: &mut W,
         v: &T,

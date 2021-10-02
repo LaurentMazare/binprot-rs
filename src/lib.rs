@@ -9,7 +9,7 @@ mod shape;
 mod traits;
 
 #[cfg(feature = "async")]
-pub use crate::async_read_write::*;
+pub use crate::async_read_write::AsyncBuffer;
 pub use crate::error::Error;
 pub use crate::shape::Shape;
 pub use crate::traits::{BinProtRead, BinProtSize, BinProtWrite};
