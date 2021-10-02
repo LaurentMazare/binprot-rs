@@ -29,12 +29,12 @@ async fn roundtrip<
     let mut vs_for_spawn = vec![];
     vs_for_spawn.extend_from_slice(vs);
     tokio::spawn(async move {
-        let mut buffer = binprot::AsyncBuffer::new(1);
+        let mut buffer = binprot::async_read_write::AsyncBuffer::new(1);
         for v in vs_for_spawn.iter() {
             buffer.write_with_size(&mut client, v).await.unwrap();
         }
     });
-    let mut buffer = binprot::AsyncBuffer::new(1);
+    let mut buffer = binprot::async_read_write::AsyncBuffer::new(1);
     for v in vs.iter() {
         let w = buffer.read_with_size(&mut server).await?;
         assert_eq!(*v, w);

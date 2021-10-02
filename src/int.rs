@@ -1,10 +1,10 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Write};
 
-const CODE_NEG_INT8: u8 = 0xff;
-const CODE_INT16: u8 = 0xfe;
-const CODE_INT32: u8 = 0xfd;
-const CODE_INT64: u8 = 0xfc;
+pub const CODE_NEG_INT8: u8 = 0xff;
+pub const CODE_INT16: u8 = 0xfe;
+pub const CODE_INT32: u8 = 0xfd;
+pub const CODE_INT64: u8 = 0xfc;
 
 pub fn write_nat0<W: Write>(w: &mut W, v: u64) -> std::io::Result<()> {
     if v < 0x000000080 {
