@@ -1,6 +1,6 @@
 [package]
 name = "binprot_derive"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["laurent <laurent.mazare@gmail.com>"]
 edition = "2018"
 

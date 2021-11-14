@@ -1,4 +1,3 @@
-use binprot::BinProtRead;
 use binprot_derive::{BinProtRead, BinProtWrite};
 use std::fmt::Debug;
 

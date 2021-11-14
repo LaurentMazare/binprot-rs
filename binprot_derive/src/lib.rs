@@ -188,7 +188,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                     let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
                     let mk_fields = named.iter().map(|field| {
                         let name = field.ident.as_ref().unwrap();
-                        quote! { let #name = BinProtRead::binprot_read(__binprot_r)?; }
+                        quote! { let #name = binprot::BinProtRead::binprot_read(__binprot_r)?; }
                     });
                     quote! {
                         #(#mk_fields)*
@@ -200,7 +200,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                     let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
                     let mk_fields = (0..num_fields).map(|index| {
                         let ident = format_ident!("__field{}", index);
-                        quote! { let #ident = BinProtRead::binprot_read(__binprot_r)?; }
+                        quote! { let #ident = binprot::BinProtRead::binprot_read(__binprot_r)?; }
                     });
                     quote! {
                         #(#mk_fields)*
@@ -234,7 +234,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                         let fields = named.iter().map(|field| field.ident.as_ref().unwrap());
                         let mk_fields = named.iter().map(|field| {
                             let name = field.ident.as_ref().unwrap();
-                            quote! { let #name = BinProtRead::binprot_read(__binprot_r)?; }
+                            quote! { let #name = binprot::BinProtRead::binprot_read(__binprot_r)?; }
                         });
                         (quote! { #(#mk_fields)* }, quote! { { #(#fields),* } })
                     }
@@ -243,7 +243,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                         let fields = (0..num_fields).map(|index| format_ident!("__field{}", index));
                         let mk_fields = (0..num_fields).map(|index| {
                             let ident = format_ident!("__field{}", index);
-                            quote! { let #ident = BinProtRead::binprot_read(__binprot_r)?; }
+                            quote! { let #ident = binprot::BinProtRead::binprot_read(__binprot_r)?; }
                         });
                         (quote! { #(#mk_fields)* }, quote! { (#(#fields),*) })
                     }
