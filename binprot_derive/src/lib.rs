@@ -43,12 +43,7 @@ pub fn binprot_write_derive(input: TokenStream) -> TokenStream {
 }
 
 fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
-    let DeriveInput {
-        ident,
-        data,
-        generics,
-        ..
-    } = ast;
+    let DeriveInput { ident, data, generics, .. } = ast;
     let mut generics = generics.clone();
     for param in &mut generics.params {
         if let GenericParam::Type(type_param) = param {
@@ -84,11 +79,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
                 }
             }
         }
-        syn::Data::Enum(DataEnum {
-            enum_token,
-            variants,
-            ..
-        }) => {
+        syn::Data::Enum(DataEnum { enum_token, variants, .. }) => {
             if variants.len() > 256 {
                 return syn::Error::new_spanned(&enum_token, "enum with to many cases")
                     .to_compile_error()
@@ -162,12 +153,7 @@ pub fn binprot_read_derive(input: TokenStream) -> TokenStream {
 }
 
 fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
-    let DeriveInput {
-        ident,
-        data,
-        generics,
-        ..
-    } = ast;
+    let DeriveInput { ident, data, generics, .. } = ast;
     let mut generics = generics.clone();
     for param in &mut generics.params {
         if let GenericParam::Type(type_param) = param {
@@ -210,11 +196,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                 syn::Fields::Unit => unimplemented!(),
             }
         }
-        syn::Data::Enum(DataEnum {
-            enum_token,
-            variants,
-            ..
-        }) => {
+        syn::Data::Enum(DataEnum { enum_token, variants, .. }) => {
             if variants.len() > 256 {
                 return syn::Error::new_spanned(&enum_token, "enum with to many cases")
                     .to_compile_error()

@@ -156,11 +156,7 @@ impl RpcClient {
         let handshake: Handshake = read_bin_prot(&mut stream, &mut buffer)?;
         println!("Received {:?}", handshake);
         write_bin_prot(&mut stream, &handshake)?;
-        Ok(RpcClient {
-            stream,
-            buffer,
-            id: 0,
-        })
+        Ok(RpcClient { stream, buffer, id: 0 })
     }
 
     fn dispatch<T: JRpc>(&mut self, query: T::Q) -> Result<Response<T::R>>
@@ -221,10 +217,7 @@ where
                 RpcResult::Error(RpcError::UncaughtExn(sexp))
             }
         };
-        let response = Response {
-            id,
-            data: rpc_result,
-        };
+        let response = Response { id, data: rpc_result };
         write_bin_prot(stream, &Message::Response::<(), T::R>(response))?;
         Ok(())
     }
@@ -280,12 +273,7 @@ impl RpcServer {
         let mut rpc_impls: BTreeMap<String, Box<dyn ErasedJRpcImpl>> = BTreeMap::new();
         let get_unique_id_impl: Box<dyn ErasedJRpcImpl> = Box::new(GetUniqueIdImpl(0));
         rpc_impls.insert("get-unique-id".to_string(), get_unique_id_impl);
-        Ok(RpcServer {
-            listener,
-            buffer,
-            id: 0,
-            rpc_impls,
-        })
+        Ok(RpcServer { listener, buffer, id: 0, rpc_impls })
     }
 
     fn run(&mut self) -> Result<()> {

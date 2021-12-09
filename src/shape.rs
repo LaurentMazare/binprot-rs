@@ -129,26 +129,22 @@ impl Constructor {
 impl<T: Digestible> Digestible for Shape<T> {
     fn digest(&self) -> md5::Digest {
         match self {
-            Shape::Annotate(uuid, t) => Constructor::new("annotate")
-                .add_digest(uuid)
-                .add_digest(t)
-                .finish(),
-            Shape::Base(uuid, vec) => Constructor::new("base")
-                .add_digest(uuid)
-                .add_digest(vec)
-                .finish(),
+            Shape::Annotate(uuid, t) => {
+                Constructor::new("annotate").add_digest(uuid).add_digest(t).finish()
+            }
+            Shape::Base(uuid, vec) => {
+                Constructor::new("base").add_digest(uuid).add_digest(vec).finish()
+            }
             Shape::Tuple(vec) => Constructor::new("tuple").add_digest(vec).finish(),
             Shape::Record(vec) => Constructor::new("record").add_digest(vec).finish(),
             Shape::Variant(vec) => Constructor::new("variant").add_digest(vec).finish(),
             Shape::PolyVariant(map) => Constructor::new("poly_variant").add_digest(map).finish(),
-            Shape::RecApp(n, vec) => Constructor::new("rec_app")
-                .add_digest(&n.to_string())
-                .add_digest(vec)
-                .finish(),
-            Shape::Application(t, vec) => Constructor::new("application")
-                .add_digest(t)
-                .add_digest(vec)
-                .finish(),
+            Shape::RecApp(n, vec) => {
+                Constructor::new("rec_app").add_digest(&n.to_string()).add_digest(vec).finish()
+            }
+            Shape::Application(t, vec) => {
+                Constructor::new("application").add_digest(t).add_digest(vec).finish()
+            }
             Shape::Var(v) => Constructor::new("var").add_digest(&v.to_string()).finish(),
         }
     }
@@ -174,10 +170,7 @@ mod tests {
         assert_eq!(digest, "698cfa4093fe5e51523842d37b92aeac");
         let digest = format!("{:x}", base("int64").digest());
         assert_eq!(digest, "0078f5c24ad346a7066cb6673cd5c3cb");
-        let digest = format!(
-            "{:x}",
-            Shape::Record(vec![("t".to_string(), base("int"))]).digest()
-        );
+        let digest = format!("{:x}", Shape::Record(vec![("t".to_string(), base("int"))]).digest());
         assert_eq!(digest, "43fa87a0bac7a0bb295f67cdc685aa26");
     }
 }
