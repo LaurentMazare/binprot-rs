@@ -1,6 +1,5 @@
 // TODO: maybe add also a deriver for BinProtSize?
-extern crate byteorder;
-extern crate proc_macro;
+use ::proc_macro;
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -240,7 +239,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
             });
             if !has_polymorphic_variant_attr {
                 quote! {
-                    let variant_index = byteorder::ReadBytesExt::read_u8(__binprot_r)?;
+                    let variant_index = binprot::byteorder::ReadBytesExt::read_u8(__binprot_r)?;
                     match variant_index {
                         #(#cases)*
                         index => Err(binprot::Error::UnexpectedVariantIndex { index, ident: stringify!(#ident) } ),
@@ -248,7 +247,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
                 }
             } else {
                 quote! {
-                    let variant_index = byteorder::ReadBytesExt::read_i32::<byteorder::LittleEndian>(__binprot_r)?;
+                    let variant_index = binprot::byteorder::ReadBytesExt::read_i32::<binprot::byteorder::LittleEndian>(__binprot_r)?;
                     match variant_index {
                         #(#cases)*
                         index => Err(binprot::Error::UnexpectedPolymorphicVariantIndex { index, ident: stringify!(#ident) } ),

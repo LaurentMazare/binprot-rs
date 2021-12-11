@@ -3,6 +3,15 @@ pub mod async_read_write;
 #[cfg(feature = "async")]
 mod async_traits;
 
+extern crate binprot_derive;
+pub mod macros {
+    pub use binprot_derive::*;
+}
+
+// Re-export byteorder as it can be used by the macros.
+#[doc(hidden)]
+pub use ::byteorder;
+
 mod error;
 mod int;
 mod shape;

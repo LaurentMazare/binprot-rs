@@ -4,8 +4,8 @@
 //
 // RPC magic number 4_411_474
 use anyhow::Result;
+use binprot::macros::{BinProtRead, BinProtWrite};
 use binprot::{BinProtRead, BinProtSize, BinProtWrite};
-use binprot_derive::{BinProtRead, BinProtWrite};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};

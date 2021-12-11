@@ -1,4 +1,4 @@
-use binprot_derive::{BinProtRead, BinProtWrite};
+use binprot::macros::{BinProtRead, BinProtWrite};
 use std::fmt::Debug;
 
 #[cfg(feature = "async")]

@@ -1,5 +1,5 @@
+use binprot::macros::{BinProtRead, BinProtWrite};
 use binprot::{BinProtRead, BinProtSize, BinProtWrite};
-use binprot_derive::{BinProtRead, BinProtWrite};
 
 fn test_roundtrip<T>(t: T, sz: usize, vs: Option<&[u8]>)
 where
