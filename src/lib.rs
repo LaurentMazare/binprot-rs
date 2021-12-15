@@ -123,6 +123,19 @@ impl<T: BinProtWrite> BinProtWrite for Vec<T> {
     }
 }
 
+// Serialization using the same format as:
+// type vec32 = (float, Bigarray.float32_elt, Bigarray.fortran_layout) Bigarray.Array1.t
+// https://github.com/janestreet/bin_prot/blob/472b29dadede4d432a020be85bf34103aa26cd57/src/write.ml#L344
+impl BinProtWrite for Vec<f32> {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        int::write_nat0(w, self.len() as u64)?;
+        for v in self.iter() {
+            w.write_f32::<byteorder::NativeEndian>(*v)?
+        }
+        Ok(())
+    }
+}
+
 impl<T: BinProtWrite> BinProtWrite for &[T] {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         int::write_nat0(w, self.len() as u64)?;
@@ -313,6 +326,24 @@ impl<T: BinProtRead> BinProtRead for Vec<T> {
         let mut v: Vec<T> = Vec::new();
         for _i in 0..len {
             let item = T::binprot_read(r)?;
+            v.push(item)
+        }
+        Ok(v)
+    }
+}
+
+// Serialization using the same format as:
+// type vec32 = (float, Bigarray.float32_elt, Bigarray.fortran_layout) Bigarray.Array1.t
+// https://github.com/janestreet/bin_prot/blob/472b29dadede4d432a020be85bf34103aa26cd57/src/write.ml#L344
+impl BinProtRead for Vec<f32> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let len = int::read_nat0(r)?;
+        let mut v: Vec<f32> = Vec::new();
+        for _i in 0..len {
+            let item = r.read_f32::<byteorder::NativeEndian>()?;
             v.push(item)
         }
         Ok(v)
