@@ -22,6 +22,7 @@ pub use crate::shape::Shape;
 pub use crate::traits::{BinProtRead, BinProtSize, BinProtWrite};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::convert::TryFrom;
 use std::hash::Hash;
 use std::io::{Read, Write};
 
@@ -72,7 +73,7 @@ impl BinProtWrite for Nat0 {
 
 impl BinProtWrite for i64 {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
-        int::write_i64(w, *self)
+        int::write_i64(w, *self as i64)
     }
 }
 
@@ -460,3 +461,33 @@ impl BinProtWrite for BufferWithLen {
         Ok(())
     }
 }
+
+// Maybe this could be done with some clever use of traits rather
+// than a macro but in doing so, I ended up with some potential
+// conflicts: "downstream crates may implement trait".
+macro_rules! int_impls {
+    ( $ty: ty) => {
+        impl BinProtWrite for $ty {
+            fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+                int::write_i64(w, (*self).into())
+            }
+        }
+
+        impl BinProtRead for $ty {
+            fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+            where
+                Self: Sized,
+            {
+                let i64 = int::read_signed(r)?;
+                Ok(<$ty>::try_from(i64)?)
+            }
+        }
+    };
+}
+
+int_impls!(i32);
+int_impls!(u32);
+int_impls!(i16);
+int_impls!(u16);
+int_impls!(i8);
+int_impls!(u8);

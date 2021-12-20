@@ -1,6 +1,6 @@
 [package]
 name = "binprot"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["laurent <laurent.mazare@gmail.com>"]
 edition = "2018"
 
@@ -16,7 +16,7 @@ members = ["binprot_derive"]
 
 [dependencies]
 byteorder = "1.4.3"
-binprot_derive = { version = "0.1.5", path = "binprot_derive" }
+binprot_derive = { version = "0.1.6", path = "binprot_derive" }
 async-trait = { version = "0.1.50", optional = true }
 tokio = { version = "1.8", optional = true, features = ["io-util", "macros", "rt"] }
 md5 = "0.7.0"
