@@ -168,8 +168,18 @@ mod tests {
     fn shape_digest() {
         let digest = format!("{:x}", base("int").digest());
         assert_eq!(digest, "698cfa4093fe5e51523842d37b92aeac");
+        let digest = format!("{:x}", base("int32").digest());
+        assert_eq!(digest, "0892f5f3797659e9ecf8a0faa5f76829");
         let digest = format!("{:x}", base("int64").digest());
         assert_eq!(digest, "0078f5c24ad346a7066cb6673cd5c3cb");
+        let digest = format!("{:x}", base("string").digest());
+        assert_eq!(digest, "d9a8da25d5656b016fb4dbdc2e4197fb");
+        let digest = format!("{:x}", base("float").digest());
+        assert_eq!(digest, "1fd923acb2dd9c5d401ad5b08b1d40cd");
+        let digest = format!("{:x}", base("bool").digest());
+        assert_eq!(digest, "a25306e4c5d30d35adbb5b0462a6b1b3");
+        let digest = format!("{:x}", base("char").digest());
+        assert_eq!(digest, "84610d32d63dcff5c93f1033ec8cb1d5");
         let digest = format!("{:x}", Shape::Record(vec![("t".to_string(), base("int"))]).digest());
         assert_eq!(digest, "43fa87a0bac7a0bb295f67cdc685aa26");
     }
