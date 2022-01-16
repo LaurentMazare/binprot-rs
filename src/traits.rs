@@ -1,5 +1,9 @@
 use std::io::{Read, Write};
 
+pub trait BinProtShape {
+    fn binprot_shape() -> crate::Shape;
+}
+
 pub trait BinProtSize {
     fn binprot_size(&self) -> usize;
 }

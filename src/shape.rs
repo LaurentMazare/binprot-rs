@@ -1,32 +1,28 @@
 // Support for bin_prot_shape like digest computation.
 // https://github.com/janestreet/bin_prot/tree/master/shape
 // TODO: handle recursive types!
+use crate::BinProtShape;
 use std::collections::BTreeMap;
 
 // In the OCaml version, uuids are used as strings.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Uuid(String);
+pub struct Uuid(&'static str);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Shape<T> {
-    Annotate(Uuid, T),
-    Base(Uuid, Vec<T>),
-    Tuple(Vec<T>),
-    Record(Vec<(String, T)>),
-    Variant(Vec<(String, Vec<T>)>),
+pub enum Shape {
+    Annotate(Uuid, Box<Shape>),
+    Base(Uuid, Vec<Shape>),
+    Tuple(Vec<Shape>),
+    Record(Vec<(&'static str, Shape)>),
+    Variant(Vec<(&'static str, Vec<Shape>)>),
     // Polymorphic variants are insensitive to the order the constructors are listed
-    PolyVariant(BTreeMap<String, Option<T>>),
-    // Left-hand-side of [Application] is a potentially recursive definition: it
-    // can refer to itself using [RecApp (i, _)] where [i] is the depth of this
-    // application node (how many application nodes are above it).
-    // It also has its own scope of type variables so it can not refer to type variables
-    // of the enclosing scope.
-    Application(T, Vec<T>),
-    RecApp(i64, Vec<T>),
+    PolyVariant(BTreeMap<&'static str, Option<Shape>>),
+    Application(Box<Shape>, Vec<Shape>),
+    RecApp(i64, Vec<Shape>),
     Var(i64),
 }
 
-trait Digestible {
+pub trait Digestible {
     fn digest(&self) -> md5::Digest;
 }
 
@@ -36,7 +32,7 @@ impl Digestible for Uuid {
     }
 }
 
-impl<T: Digestible> Digestible for (String, T) {
+impl<T: Digestible> Digestible for (&'static str, T) {
     fn digest(&self) -> md5::Digest {
         let mut context = md5::Context::new();
         context.consume(<[u8; 16]>::from(self.0.digest()));
@@ -96,6 +92,12 @@ impl<T: Digestible> Digestible for Vec<T> {
     }
 }
 
+impl Digestible for &str {
+    fn digest(&self) -> md5::Digest {
+        md5::compute(self)
+    }
+}
+
 impl Digestible for String {
     fn digest(&self) -> md5::Digest {
         md5::compute(self)
@@ -126,11 +128,11 @@ impl Constructor {
     }
 }
 
-impl<T: Digestible> Digestible for Shape<T> {
+impl Digestible for Shape {
     fn digest(&self) -> md5::Digest {
         match self {
             Shape::Annotate(uuid, t) => {
-                Constructor::new("annotate").add_digest(uuid).add_digest(t).finish()
+                Constructor::new("annotate").add_digest(uuid).add_digest(&**t).finish()
             }
             Shape::Base(uuid, vec) => {
                 Constructor::new("base").add_digest(uuid).add_digest(vec).finish()
@@ -143,10 +145,38 @@ impl<T: Digestible> Digestible for Shape<T> {
                 Constructor::new("rec_app").add_digest(&n.to_string()).add_digest(vec).finish()
             }
             Shape::Application(t, vec) => {
-                Constructor::new("application").add_digest(t).add_digest(vec).finish()
+                Constructor::new("application").add_digest(&**t).add_digest(vec).finish()
             }
             Shape::Var(v) => Constructor::new("var").add_digest(&v.to_string()).finish(),
         }
+    }
+}
+
+impl From<&'static str> for Uuid {
+    fn from(s: &'static str) -> Self {
+        Uuid(s)
+    }
+}
+
+fn base(s: &'static str) -> Shape {
+    Shape::Base(Uuid::from(s), vec![])
+}
+
+impl BinProtShape for i64 {
+    fn binprot_shape() -> Shape {
+        base("int")
+    }
+}
+
+impl BinProtShape for f64 {
+    fn binprot_shape() -> Shape {
+        base("float")
+    }
+}
+
+impl BinProtShape for String {
+    fn binprot_shape() -> Shape {
+        base("string")
     }
 }
 
@@ -154,17 +184,7 @@ impl<T: Digestible> Digestible for Shape<T> {
 mod tests {
     use super::*;
 
-    impl From<&str> for Uuid {
-        fn from(s: &str) -> Self {
-            Uuid(s.to_string())
-        }
-    }
-
-    fn base(s: &str) -> Shape<String> {
-        Shape::<String>::Base(Uuid::from(s), vec![])
-    }
-
-    fn digest_str<T: Digestible>(s: &Shape<T>) -> String {
+    fn digest_str(s: &Shape) -> String {
         format!("{:x}", s.digest())
     }
 
@@ -177,15 +197,11 @@ mod tests {
         assert_eq!(digest_str(&base("float")), "1fd923acb2dd9c5d401ad5b08b1d40cd");
         assert_eq!(digest_str(&base("bool")), "a25306e4c5d30d35adbb5b0462a6b1b3");
         assert_eq!(digest_str(&base("char")), "84610d32d63dcff5c93f1033ec8cb1d5");
-        let shape_t = Shape::Record(vec![("t".to_string(), base("int"))]);
+        let shape_t = Shape::Record(vec![("t", base("int"))]);
         assert_eq!(digest_str(&shape_t), "43fa87a0bac7a0bb295f67cdc685aa26");
-        let shape_u =
-            Shape::Record(vec![("t".to_string(), base("int")), ("u".to_string(), base("float"))]);
+        let shape_u = Shape::Record(vec![("t", base("int")), ("u", base("float"))]);
         assert_eq!(digest_str(&shape_u), "485a864ae3ab9d4e12534fd17f64a7c4");
-        let shape_v = Shape::Record(vec![
-            ("t".to_string(), shape_t.clone()),
-            ("u".to_string(), shape_u.clone()),
-        ]);
+        let shape_v = Shape::Record(vec![("t", shape_t.clone()), ("u", shape_u.clone())]);
         assert_eq!(digest_str(&shape_v), "3a9e779c28768361e904e90f37728927");
     }
 }

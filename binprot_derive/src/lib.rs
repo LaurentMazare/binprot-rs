@@ -273,6 +273,75 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
     output.into()
 }
 
+#[proc_macro_derive(BinProtShape, attributes(polymorphic_variant))]
+pub fn binprot_shape_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_binprot_shape(&ast)
+}
+
+fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
+    let DeriveInput { ident, data, generics, .. } = ast;
+    let mut generics = generics.clone();
+    for param in &mut generics.params {
+        if let GenericParam::Type(type_param) = param {
+            type_param.bounds.push(parse_quote!(BinProtShape))
+        }
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let has_polymorphic_variant_attr = has_polymorphic_variant_attr(ast);
+
+    let impl_fn = match data {
+        syn::Data::Struct(s) => {
+            if has_polymorphic_variant_attr {
+                panic!("polymorphic_variant is only allowed on enum")
+            }
+            match &s.fields {
+                syn::Fields::Named(FieldsNamed { named, .. }) => {
+                    let fields = named.iter().map(|field| {
+                        let name = field.ident.as_ref().unwrap();
+                        let ty = &field.ty;
+                        quote! { (stringify!(#name), <#ty>::binprot_shape()) }
+                    });
+                    quote! {binprot::Shape::Record(vec![#(#fields),*])}
+                }
+                syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                    let fields = unnamed.iter().map(|field| {
+                        let ty = &field.ty;
+                        quote! {<#ty>::binprot_shape() }
+                    });
+                    quote! {binprot::Shape::Tuple(vec![#(#fields,)*])}
+                }
+                syn::Fields::Unit => {
+                    unimplemented!()
+                }
+            }
+        }
+        syn::Data::Enum(DataEnum { enum_token, variants, .. }) => {
+            if variants.len() > 256 {
+                return syn::Error::new_spanned(&enum_token, "enum with to many cases")
+                    .to_compile_error()
+                    .into();
+            }
+            unimplemented!()
+        }
+        syn::Data::Union(DataUnion { union_token, .. }) => {
+            return syn::Error::new_spanned(&union_token, "union is not supported")
+                .to_compile_error()
+                .into();
+        }
+    };
+
+    let output = quote! {
+        impl #impl_generics binprot::BinProtShape for #ident #ty_generics #where_clause {
+            fn binprot_shape() -> binprot::Shape {
+                #impl_fn
+            }
+        }
+    };
+
+    output.into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

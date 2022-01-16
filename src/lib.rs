@@ -18,8 +18,8 @@ mod shape;
 mod traits;
 
 pub use crate::error::Error;
-pub use crate::shape::Shape;
-pub use crate::traits::{BinProtRead, BinProtSize, BinProtWrite};
+pub use crate::shape::{Digestible, Shape};
+pub use crate::traits::{BinProtRead, BinProtShape, BinProtSize, BinProtWrite};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::convert::TryFrom;
@@ -216,6 +216,16 @@ macro_rules! tuple_impls {
             {
                 $(let $name = $name::binprot_read(r)?;)+
                 Ok(($($name,)+))
+            }
+        }
+
+        impl<$($name: BinProtShape),+> BinProtShape for ($($name,)+)
+        {
+            #[allow(non_snake_case)]
+            fn binprot_shape() -> Shape
+            {
+                $(let $name = <$name>::binprot_shape();)+
+                Shape::Tuple(vec![$($name,)+])
             }
         }
     };
