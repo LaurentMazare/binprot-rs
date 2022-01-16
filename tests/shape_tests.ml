@@ -65,3 +65,27 @@ module _ = struct
     3a9e779c28768361e904e90f37728927
     7a412f4ba96d992a85db1d498721b752 |}]
 end
+
+module _ = struct
+  let print_shape_sexp shape =
+    Stdio.printf
+      "%s\n"
+      (Bin_prot.Shape.eval shape |> Bin_prot.Shape.Canonical.sexp_of_t |> Sexp.to_string);
+    print_digest shape
+
+  let%expect_test _ =
+    print_shape_sexp [%bin_shape: int];
+    print_shape_sexp [%bin_shape: int list];
+    print_shape_sexp [%bin_shape: int array];
+    print_shape_sexp [%bin_shape: unit];
+    [%expect
+      {|
+    (Exp(Base int()))
+    698cfa4093fe5e51523842d37b92aeac
+    (Exp(Base list((Exp(Base int())))))
+    4cd553520709511864846bda25c448d0
+    (Exp(Base array((Exp(Base int())))))
+    4c138035aa69ec9dd8b7a7119090f84a
+    (Exp(Base unit()))
+    86ba5df747eec837f0b391dd49f33f9e |}]
+end

@@ -44,4 +44,6 @@ fn test_shapes() {
     assert_digest::<Test2>("485a864ae3ab9d4e12534fd17f64a7c4");
     assert_digest::<Test3>("3a9e779c28768361e904e90f37728927");
     assert_digest::<Test4>("7a412f4ba96d992a85db1d498721b752");
+    assert_digest::<Vec<i64>>("4c138035aa69ec9dd8b7a7119090f84a");
+    assert_digest::<()>("86ba5df747eec837f0b391dd49f33f9e");
 }

@@ -180,6 +180,36 @@ impl BinProtShape for String {
     }
 }
 
+impl BinProtShape for bool {
+    fn binprot_shape() -> Shape {
+        base("bool")
+    }
+}
+
+impl BinProtShape for char {
+    fn binprot_shape() -> Shape {
+        base("char")
+    }
+}
+
+impl BinProtShape for i32 {
+    fn binprot_shape() -> Shape {
+        base("i32")
+    }
+}
+
+impl BinProtShape for () {
+    fn binprot_shape() -> Shape {
+        base("unit")
+    }
+}
+
+impl<T: BinProtShape> BinProtShape for Vec<T> {
+    fn binprot_shape() -> Shape {
+        Shape::Base(Uuid::from("array"), vec![T::binprot_shape()])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
