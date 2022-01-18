@@ -33,6 +33,10 @@ struct Test4 {
     v: (Test3, Test3, Test3),
 }
 
+#[allow(dead_code)]
+#[derive(BinProtShape)]
+struct TestRec(Vec<TestRec>);
+
 #[test]
 fn test_shapes() {
     assert_digest::<i64>("698cfa4093fe5e51523842d37b92aeac");
@@ -46,4 +50,5 @@ fn test_shapes() {
     assert_digest::<Test4>("7a412f4ba96d992a85db1d498721b752");
     assert_digest::<Vec<i64>>("4c138035aa69ec9dd8b7a7119090f84a");
     assert_digest::<()>("86ba5df747eec837f0b391dd49f33f9e");
+    assert_digest::<Option<i64>>("33fd4ff7bde530bddf13dfa739207fae");
 }

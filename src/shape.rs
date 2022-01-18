@@ -210,6 +210,12 @@ impl<T: BinProtShape> BinProtShape for Vec<T> {
     }
 }
 
+impl<T: BinProtShape> BinProtShape for Option<T> {
+    fn binprot_shape() -> Shape {
+        Shape::Base(Uuid::from("option"), vec![T::binprot_shape()])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,5 +251,14 @@ mod tests {
             Shape::Application(Box::new(inner), vec![])
         };
         assert_eq!(digest_str(&shape_rec), "a0627068b62aa4530d1891cbe7f5d51e");
+        // type simple_rec = { foo : simple_rec option } [@@deriving bin_io]
+        let shape_rec = {
+            let inner = Shape::Record(vec![(
+                "foo",
+                Shape::Base("option".into(), vec![Shape::RecApp(0, vec![])]),
+            )]);
+            Shape::Application(Box::new(inner), vec![])
+        };
+        assert_eq!(digest_str(&shape_rec), "2e92d51efb901fcf492f243fc1c3601d");
     }
 }
