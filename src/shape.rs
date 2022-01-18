@@ -233,5 +233,17 @@ mod tests {
         assert_eq!(digest_str(&shape_u), "485a864ae3ab9d4e12534fd17f64a7c4");
         let shape_v = Shape::Record(vec![("t", shape_t.clone()), ("u", shape_u.clone())]);
         assert_eq!(digest_str(&shape_v), "3a9e779c28768361e904e90f37728927");
+        // Shape used for some recursive type, see tests/shape_tests.ml
+        //   type int_list =
+        //     | Empty
+        //     | Cons of (int * int_list)
+        let shape_rec = {
+            let inner = Shape::Variant(vec![
+                ("Empty", vec![]),
+                ("Cons", vec![Shape::Tuple(vec![base("int"), Shape::RecApp(0, vec![])])]),
+            ]);
+            Shape::Application(Box::new(inner), vec![])
+        };
+        assert_eq!(digest_str(&shape_rec), "a0627068b62aa4530d1891cbe7f5d51e");
     }
 }
