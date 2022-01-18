@@ -73,11 +73,17 @@ module _ = struct
       (Bin_prot.Shape.eval shape |> Bin_prot.Shape.Canonical.sexp_of_t |> Sexp.to_string);
     print_digest shape
 
+  type int_list =
+    | Empty
+    | Cons of (int * int_list)
+  [@@deriving bin_io]
+
   let%expect_test _ =
     print_shape_sexp [%bin_shape: int];
     print_shape_sexp [%bin_shape: int list];
     print_shape_sexp [%bin_shape: int array];
     print_shape_sexp [%bin_shape: unit];
+    print_shape_sexp [%bin_shape: int_list];
     [%expect
       {|
     (Exp(Base int()))
@@ -87,5 +93,7 @@ module _ = struct
     (Exp(Base array((Exp(Base int())))))
     4c138035aa69ec9dd8b7a7119090f84a
     (Exp(Base unit()))
-    86ba5df747eec837f0b391dd49f33f9e |}]
+    86ba5df747eec837f0b391dd49f33f9e
+    (Exp(Application(Exp(Variant((Empty())(Cons((Exp(Tuple((Exp(Base int()))(Exp(Rec_app 0()))))))))))()))
+    a0627068b62aa4530d1891cbe7f5d51e |}]
 end
