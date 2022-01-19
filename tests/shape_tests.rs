@@ -37,6 +37,12 @@ struct Test4 {
 #[derive(BinProtShape)]
 struct TestRec(Vec<TestRec>);
 
+#[allow(dead_code)]
+#[derive(BinProtShape)]
+struct TestRec2 {
+    foo: Option<Box<TestRec2>>,
+}
+
 #[test]
 fn test_shapes() {
     assert_digest::<i64>("698cfa4093fe5e51523842d37b92aeac");
@@ -51,4 +57,8 @@ fn test_shapes() {
     assert_digest::<Vec<i64>>("4c138035aa69ec9dd8b7a7119090f84a");
     assert_digest::<()>("86ba5df747eec837f0b391dd49f33f9e");
     assert_digest::<Option<i64>>("33fd4ff7bde530bddf13dfa739207fae");
+    // Recursive types are not handled properly yet, the following
+    // result in a stack overflow.
+    // assert_digest::<TestRec>("86ba5df747eec837f0b391dd49f33f9e");
+    // assert_digest::<TestRec2>("2e92d51efb901fcf492f243fc1c3601d");
 }

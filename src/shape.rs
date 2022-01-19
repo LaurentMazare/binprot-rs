@@ -216,6 +216,12 @@ impl<T: BinProtShape> BinProtShape for Option<T> {
     }
 }
 
+impl<T: BinProtShape> BinProtShape for Box<T> {
+    fn binprot_shape() -> Shape {
+        T::binprot_shape()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
