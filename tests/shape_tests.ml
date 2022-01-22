@@ -73,6 +73,18 @@ module _ = struct
       (Bin_prot.Shape.eval shape |> Bin_prot.Shape.Canonical.sexp_of_t |> Sexp.to_string);
     print_digest shape
 
+  type variant = Foo [@@deriving bin_io]
+
+  type variant2 =
+    | Foo
+    | Bar of int
+    | Bar2 of int * float
+    | Baz of
+        { x : int
+        ; y : float
+        }
+  [@@deriving bin_io]
+
   type simple_rec = { foo : simple_rec option } [@@deriving bin_io]
 
   type int_list =
@@ -86,6 +98,9 @@ module _ = struct
     print_shape_sexp [%bin_shape: int array];
     print_shape_sexp [%bin_shape: int option];
     print_shape_sexp [%bin_shape: unit];
+    print_shape_sexp [%bin_shape: variant];
+    print_shape_sexp [%bin_shape: variant2];
+    print_shape_sexp [%bin_shape: [ `A | `B of int ]];
     print_shape_sexp [%bin_shape: simple_rec];
     print_shape_sexp [%bin_shape: int_list];
     [%expect
@@ -100,6 +115,12 @@ module _ = struct
     33fd4ff7bde530bddf13dfa739207fae
     (Exp(Base unit()))
     86ba5df747eec837f0b391dd49f33f9e
+    (Exp(Variant((Foo()))))
+    81253431711eb0c9d669d0cf1c5ffea7
+    (Exp(Variant((Foo())(Bar((Exp(Base int()))))(Bar2((Exp(Base int()))(Exp(Base float()))))(Baz((Exp(Record((x(Exp(Base int())))(y(Exp(Base float())))))))))))
+    6b5a9ecfe97b786f98c8b9e502c3d6db
+    (Exp(Poly_variant((sorted((A())(B((Exp(Base int())))))))))
+    f08c6a40c6f063d21755d22e9e5f8a2c
     (Exp(Application(Exp(Record((foo(Exp(Base option((Exp(Rec_app 0())))))))))()))
     2e92d51efb901fcf492f243fc1c3601d
     (Exp(Application(Exp(Variant((Empty())(Cons((Exp(Tuple((Exp(Base int()))(Exp(Rec_app 0()))))))))))()))

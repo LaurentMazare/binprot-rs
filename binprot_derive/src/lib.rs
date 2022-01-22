@@ -316,13 +316,38 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
                 }
             }
         }
-        syn::Data::Enum(DataEnum { enum_token, variants, .. }) => {
-            if variants.len() > 256 {
-                return syn::Error::new_spanned(&enum_token, "enum with to many cases")
-                    .to_compile_error()
-                    .into();
+        syn::Data::Enum(DataEnum { variants, .. }) => {
+            let cases = variants.iter().map(|variant| {
+                let args = match &variant.fields {
+                    syn::Fields::Named(FieldsNamed { named, .. }) => {
+                        let fields = named.iter().map(|field| {
+                            let name = field.ident.as_ref().unwrap();
+                            let ty = &field.ty;
+                            quote! { (stringify!(#name), <#ty>::binprot_shape()) }
+                        });
+                        vec![quote! {binprot::Shape::Record(vec![#(#fields),*])}]
+                    }
+                    syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => unnamed
+                        .iter()
+                        .map(|field| {
+                            let ty = &field.ty;
+                            quote! {<#ty>::binprot_shape() }
+                        })
+                        .collect::<Vec<_>>(),
+                    syn::Fields::Unit => vec![],
+                };
+                let name = &variant.ident;
+                quote! {(stringify!(#name), vec![#(#args,)*])}
+            });
+            if has_polymorphic_variant_attr {
+                quote! {
+                    binprot::Shape::PolyVariant(vec![#(#cases,)*])
+                }
+            } else {
+                quote! {
+                    binprot::Shape::Variant(vec![#(#cases,)*])
+                }
             }
-            unimplemented!()
         }
         syn::Data::Union(DataUnion { union_token, .. }) => {
             return syn::Error::new_spanned(&union_token, "union is not supported")

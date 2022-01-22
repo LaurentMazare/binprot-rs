@@ -35,6 +35,29 @@ struct Test4 {
 
 #[allow(dead_code)]
 #[derive(BinProtShape)]
+enum TestVariant {
+    Foo,
+}
+
+#[allow(dead_code)]
+#[derive(BinProtShape)]
+enum TestVariant2 {
+    Foo,
+    Bar(i64),
+    Bar2(i64, f64),
+    Baz { x: i64, y: f64 },
+}
+
+#[allow(dead_code)]
+//#[derive(BinProtShape)]
+//#[polymorphic_variant]
+enum TestPolyVariant {
+    A,
+    B(i64),
+}
+
+#[allow(dead_code)]
+#[derive(BinProtShape)]
 struct TestRec(Vec<TestRec>);
 
 #[allow(dead_code)]
@@ -57,6 +80,10 @@ fn test_shapes() {
     assert_digest::<Vec<i64>>("4c138035aa69ec9dd8b7a7119090f84a");
     assert_digest::<()>("86ba5df747eec837f0b391dd49f33f9e");
     assert_digest::<Option<i64>>("33fd4ff7bde530bddf13dfa739207fae");
+    assert_eq!(format!("{:?}", TestVariant::binprot_shape()), "Variant([(\"Foo\", [])])");
+    assert_digest::<TestVariant>("81253431711eb0c9d669d0cf1c5ffea7");
+    assert_digest::<TestVariant2>("6b5a9ecfe97b786f98c8b9e502c3d6db");
+    // assert_digest::<TestPolyVariant>("81253431711eb0c9d669d0cf1c5ffea7");
     // Recursive types are not handled properly yet, the following
     // result in a stack overflow.
     // assert_digest::<TestRec>("86ba5df747eec837f0b391dd49f33f9e");
