@@ -9,16 +9,19 @@ pub trait BinProtShape: 'static {
 
     fn binprot_shape_loop(typeids: &mut ShapeContext) -> Shape {
         let typeid = std::any::TypeId::of::<Self>();
-        if typeids.contains_key(&typeid) {
-            // TODO: Adjust the parameters.
-            typeids.insert(typeid, true);
-            Shape::RecApp(0, vec![])
-        } else {
-            typeids.insert(typeid, false);
-            let shape = Self::binprot_shape_impl(typeids);
-            match typeids.remove(&typeid) {
-                None | Some(false) => shape,
-                Some(true) => Shape::Application(Box::new(shape), vec![]),
+        match typeids.entry(typeid) {
+            std::collections::hash_map::Entry::Occupied(mut e) => {
+                // TODO: Adjust the parameters.
+                e.insert(true);
+                Shape::RecApp(0, vec![])
+            }
+            std::collections::hash_map::Entry::Vacant(e) => {
+                e.insert(false);
+                let shape = Self::binprot_shape_impl(typeids);
+                match typeids.remove(&typeid) {
+                    None | Some(false) => shape,
+                    Some(true) => Shape::Application(Box::new(shape), vec![]),
+                }
             }
         }
     }
