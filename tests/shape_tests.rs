@@ -92,6 +92,13 @@ struct TestRec2 {
     foo: Option<Box<TestRec2>>,
 }
 
+#[allow(dead_code)]
+#[derive(BinProtShape)]
+enum TestRec3 {
+    Empty,
+    Cons((i64, Box<TestRec3>)),
+}
+
 #[test]
 fn test_shapes() {
     assert_digest::<i64>("698cfa4093fe5e51523842d37b92aeac");
@@ -114,8 +121,13 @@ fn test_shapes() {
     assert_digest::<TestPolyVariant2>("d82abba442a26f15f25d121e20b45083");
     assert_digest::<TestPolyVariant3>("534bd89034090512512955f635735d46");
     assert_digest::<TestPolyVariant4>("534bd89034090512512955f635735d46");
-    // Recursive types are not handled properly yet, the following
-    // result in a stack overflow.
-    // assert_digest::<TestRec>("86ba5df747eec837f0b391dd49f33f9e");
-    // assert_digest::<TestRec2>("2e92d51efb901fcf492f243fc1c3601d");
+    // Recursive types are not handled properly yet if there are multiple
+    // recursive types. However for a simple recursive type this works well.
+    assert_digest::<TestRec>("4526f4c156fe4f6acde769fcb6262b23");
+    assert_eq!(
+        format!("{:?}", TestRec2::binprot_shape()),
+        "Application(Record([(\"foo\", Base(Uuid(\"option\"), [RecApp(0, [])]))]), [])"
+    );
+    assert_digest::<TestRec2>("2e92d51efb901fcf492f243fc1c3601d");
+    assert_digest::<TestRec3>("a0627068b62aa4530d1891cbe7f5d51e");
 }

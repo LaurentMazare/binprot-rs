@@ -300,14 +300,14 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
                     let fields = named.iter().map(|field| {
                         let name = field.ident.as_ref().unwrap();
                         let ty = &field.ty;
-                        quote! { (stringify!(#name), <#ty>::binprot_shape()) }
+                        quote! { (stringify!(#name), <#ty>::binprot_shape_loop(_c)) }
                     });
                     quote! {binprot::Shape::Record(vec![#(#fields),*])}
                 }
                 syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
                     let fields = unnamed.iter().map(|field| {
                         let ty = &field.ty;
-                        quote! {<#ty>::binprot_shape() }
+                        quote! {<#ty>::binprot_shape_loop(_c) }
                     });
                     quote! {binprot::Shape::Tuple(vec![#(#fields,)*])}
                 }
@@ -324,7 +324,7 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
                             let fields = named.iter().map(|field| {
                                 let name = field.ident.as_ref().unwrap();
                                 let ty = &field.ty;
-                                quote! { (stringify!(#name), <#ty>::binprot_shape()) }
+                                quote! { (stringify!(#name), <#ty>::binprot_shape_loop(_c)) }
                             });
                             quote! {Some(binprot::Shape::Record(vec![#(#fields),*]))}
                         }
@@ -333,7 +333,7 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
                                 .iter()
                                 .map(|field| {
                                     let ty = &field.ty;
-                                    quote! {<#ty>::binprot_shape() }
+                                    quote! {<#ty>::binprot_shape_loop(_c) }
                                 })
                                 .collect::<Vec<_>>();
                             if tuple.len() == 1 {
@@ -358,7 +358,7 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
                             let fields = named.iter().map(|field| {
                                 let name = field.ident.as_ref().unwrap();
                                 let ty = &field.ty;
-                                quote! { (stringify!(#name), <#ty>::binprot_shape()) }
+                                quote! { (stringify!(#name), <#ty>::binprot_shape_loop(_c)) }
                             });
                             vec![quote! {binprot::Shape::Record(vec![#(#fields),*])}]
                         }
@@ -366,7 +366,7 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
                             .iter()
                             .map(|field| {
                                 let ty = &field.ty;
-                                quote! {<#ty>::binprot_shape() }
+                                quote! {<#ty>::binprot_shape_loop(_c) }
                             })
                             .collect::<Vec<_>>(),
                         syn::Fields::Unit => vec![],
@@ -388,7 +388,7 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
 
     let output = quote! {
         impl #impl_generics binprot::BinProtShape for #ident #ty_generics #where_clause {
-            fn binprot_shape() -> binprot::Shape {
+            fn binprot_shape_impl(_c: &mut binprot::ShapeContext) -> binprot::Shape {
                 #impl_fn
             }
         }

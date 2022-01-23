@@ -1,7 +1,32 @@
+use crate::Shape;
+use std::collections::HashMap;
 use std::io::{Read, Write};
 
-pub trait BinProtShape {
-    fn binprot_shape() -> crate::Shape;
+pub type ShapeContext = HashMap<std::any::TypeId, bool>;
+
+pub trait BinProtShape: 'static {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape;
+
+    fn binprot_shape_loop(typeids: &mut ShapeContext) -> Shape {
+        let typeid = std::any::TypeId::of::<Self>();
+        if typeids.contains_key(&typeid) {
+            // TODO: Adjust the parameters.
+            typeids.insert(typeid, true);
+            Shape::RecApp(0, vec![])
+        } else {
+            typeids.insert(typeid, false);
+            let shape = Self::binprot_shape_impl(typeids);
+            match typeids.remove(&typeid) {
+                None | Some(false) => shape,
+                Some(true) => Shape::Application(Box::new(shape), vec![]),
+            }
+        }
+    }
+
+    fn binprot_shape() -> Shape {
+        let mut typeids = HashMap::new();
+        Self::binprot_shape_loop(&mut typeids)
+    }
 }
 
 pub trait BinProtSize {

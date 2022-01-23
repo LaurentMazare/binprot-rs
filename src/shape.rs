@@ -1,6 +1,7 @@
 // Support for bin_prot_shape like digest computation.
 // https://github.com/janestreet/bin_prot/tree/master/shape
 // TODO: handle recursive types!
+use crate::traits::ShapeContext;
 use crate::BinProtShape;
 use std::collections::BTreeMap;
 
@@ -166,62 +167,62 @@ fn base(s: &'static str) -> Shape {
 }
 
 impl BinProtShape for i64 {
-    fn binprot_shape() -> Shape {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape {
         base("int")
     }
 }
 
 impl BinProtShape for f64 {
-    fn binprot_shape() -> Shape {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape {
         base("float")
     }
 }
 
 impl BinProtShape for String {
-    fn binprot_shape() -> Shape {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape {
         base("string")
     }
 }
 
 impl BinProtShape for bool {
-    fn binprot_shape() -> Shape {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape {
         base("bool")
     }
 }
 
 impl BinProtShape for char {
-    fn binprot_shape() -> Shape {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape {
         base("char")
     }
 }
 
 impl BinProtShape for i32 {
-    fn binprot_shape() -> Shape {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape {
         base("i32")
     }
 }
 
 impl BinProtShape for () {
-    fn binprot_shape() -> Shape {
+    fn binprot_shape_impl(_: &mut ShapeContext) -> Shape {
         base("unit")
     }
 }
 
 impl<T: BinProtShape> BinProtShape for Vec<T> {
-    fn binprot_shape() -> Shape {
-        Shape::Base(Uuid::from("array"), vec![T::binprot_shape()])
+    fn binprot_shape_impl(c: &mut ShapeContext) -> Shape {
+        Shape::Base(Uuid::from("array"), vec![T::binprot_shape_loop(c)])
     }
 }
 
 impl<T: BinProtShape> BinProtShape for Option<T> {
-    fn binprot_shape() -> Shape {
-        Shape::Base(Uuid::from("option"), vec![T::binprot_shape()])
+    fn binprot_shape_impl(c: &mut ShapeContext) -> Shape {
+        Shape::Base(Uuid::from("option"), vec![T::binprot_shape_loop(c)])
     }
 }
 
 impl<T: BinProtShape> BinProtShape for Box<T> {
-    fn binprot_shape() -> Shape {
-        T::binprot_shape()
+    fn binprot_shape_impl(c: &mut ShapeContext) -> Shape {
+        T::binprot_shape_loop(c)
     }
 }
 
