@@ -96,7 +96,14 @@ struct TestRec2 {
 #[derive(BinProtShape)]
 enum TestRec3 {
     Empty,
-    Cons((i64, Box<TestRec3>)),
+    Cons(i64, Box<TestRec3>),
+}
+
+#[allow(dead_code)]
+#[derive(BinProtShape)]
+enum TestRec4 {
+    Empty,
+    Cons((i64, Box<TestRec4>)),
 }
 
 #[test]
@@ -129,5 +136,6 @@ fn test_shapes() {
         "Application(Record([(\"foo\", Base(Uuid(\"option\"), [RecApp(0, [])]))]), [])"
     );
     assert_digest::<TestRec2>("2e92d51efb901fcf492f243fc1c3601d");
-    assert_digest::<TestRec3>("a0627068b62aa4530d1891cbe7f5d51e");
+    assert_digest::<TestRec4>("a0627068b62aa4530d1891cbe7f5d51e");
+    assert_digest::<TestRec3>("2ac39052755cfe456342e727b104f34a");
 }

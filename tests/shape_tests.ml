@@ -92,6 +92,11 @@ module _ = struct
     | Cons of (int * int_list)
   [@@deriving bin_io]
 
+  type int_list2 =
+    | Empty
+    | Cons of int * int_list2
+  [@@deriving bin_io]
+
   let%expect_test _ =
     print_shape_sexp [%bin_shape: int];
     print_shape_sexp [%bin_shape: int list];
@@ -105,6 +110,7 @@ module _ = struct
     print_shape_sexp [%bin_shape: [ `A of int | `B | `C of int * float | `D of string ]];
     print_shape_sexp [%bin_shape: simple_rec];
     print_shape_sexp [%bin_shape: int_list];
+    print_shape_sexp [%bin_shape: int_list2];
     [%expect
       {|
     (Exp(Base int()))
@@ -130,5 +136,7 @@ module _ = struct
     (Exp(Application(Exp(Record((foo(Exp(Base option((Exp(Rec_app 0())))))))))()))
     2e92d51efb901fcf492f243fc1c3601d
     (Exp(Application(Exp(Variant((Empty())(Cons((Exp(Tuple((Exp(Base int()))(Exp(Rec_app 0()))))))))))()))
-    a0627068b62aa4530d1891cbe7f5d51e |}]
+    a0627068b62aa4530d1891cbe7f5d51e
+    (Exp(Application(Exp(Variant((Empty())(Cons((Exp(Base int()))(Exp(Rec_app 0())))))))()))
+    2ac39052755cfe456342e727b104f34a |}]
 end
