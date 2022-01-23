@@ -317,33 +317,63 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
             }
         }
         syn::Data::Enum(DataEnum { variants, .. }) => {
-            let cases = variants.iter().map(|variant| {
-                let args = match &variant.fields {
-                    syn::Fields::Named(FieldsNamed { named, .. }) => {
-                        let fields = named.iter().map(|field| {
-                            let name = field.ident.as_ref().unwrap();
-                            let ty = &field.ty;
-                            quote! { (stringify!(#name), <#ty>::binprot_shape()) }
-                        });
-                        vec![quote! {binprot::Shape::Record(vec![#(#fields),*])}]
-                    }
-                    syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => unnamed
-                        .iter()
-                        .map(|field| {
-                            let ty = &field.ty;
-                            quote! {<#ty>::binprot_shape() }
-                        })
-                        .collect::<Vec<_>>(),
-                    syn::Fields::Unit => vec![],
-                };
-                let name = &variant.ident;
-                quote! {(stringify!(#name), vec![#(#args,)*])}
-            });
             if has_polymorphic_variant_attr {
+                let cases = variants.iter().map(|variant| {
+                    let args = match &variant.fields {
+                        syn::Fields::Named(FieldsNamed { named, .. }) => {
+                            let fields = named.iter().map(|field| {
+                                let name = field.ident.as_ref().unwrap();
+                                let ty = &field.ty;
+                                quote! { (stringify!(#name), <#ty>::binprot_shape()) }
+                            });
+                            quote! {Some(binprot::Shape::Record(vec![#(#fields),*]))}
+                        }
+                        syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                            let tuple = unnamed
+                                .iter()
+                                .map(|field| {
+                                    let ty = &field.ty;
+                                    quote! {<#ty>::binprot_shape() }
+                                })
+                                .collect::<Vec<_>>();
+                            if tuple.len() == 1 {
+                                let tuple = &tuple[0];
+                                quote! {Some(#tuple)}
+                            } else {
+                                quote! {Some(binprot::Shape::Tuple(vec![#(#tuple),*]))}
+                            }
+                        }
+                        syn::Fields::Unit => quote! {None},
+                    };
+                    let name = &variant.ident;
+                    quote! {(stringify!(#name), #args)}
+                });
                 quote! {
-                    binprot::Shape::PolyVariant(vec![#(#cases,)*])
+                    binprot::Shape::PolyVariant(vec![#(#cases,)*].into_iter().collect())
                 }
             } else {
+                let cases = variants.iter().map(|variant| {
+                    let args = match &variant.fields {
+                        syn::Fields::Named(FieldsNamed { named, .. }) => {
+                            let fields = named.iter().map(|field| {
+                                let name = field.ident.as_ref().unwrap();
+                                let ty = &field.ty;
+                                quote! { (stringify!(#name), <#ty>::binprot_shape()) }
+                            });
+                            vec![quote! {binprot::Shape::Record(vec![#(#fields),*])}]
+                        }
+                        syn::Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => unnamed
+                            .iter()
+                            .map(|field| {
+                                let ty = &field.ty;
+                                quote! {<#ty>::binprot_shape() }
+                            })
+                            .collect::<Vec<_>>(),
+                        syn::Fields::Unit => vec![],
+                    };
+                    let name = &variant.ident;
+                    quote! {(stringify!(#name), vec![#(#args,)*])}
+                });
                 quote! {
                     binprot::Shape::Variant(vec![#(#cases,)*])
                 }

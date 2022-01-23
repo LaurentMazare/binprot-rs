@@ -100,7 +100,7 @@ module _ = struct
     print_shape_sexp [%bin_shape: unit];
     print_shape_sexp [%bin_shape: variant];
     print_shape_sexp [%bin_shape: variant2];
-    print_shape_sexp [%bin_shape: [ `A | `B of int ]];
+    print_shape_sexp [%bin_shape: [ `A ]];
     print_shape_sexp [%bin_shape: simple_rec];
     print_shape_sexp [%bin_shape: int_list];
     [%expect
@@ -119,8 +119,8 @@ module _ = struct
     81253431711eb0c9d669d0cf1c5ffea7
     (Exp(Variant((Foo())(Bar((Exp(Base int()))))(Bar2((Exp(Base int()))(Exp(Base float()))))(Baz((Exp(Record((x(Exp(Base int())))(y(Exp(Base float())))))))))))
     6b5a9ecfe97b786f98c8b9e502c3d6db
-    (Exp(Poly_variant((sorted((A())(B((Exp(Base int())))))))))
-    f08c6a40c6f063d21755d22e9e5f8a2c
+    (Exp(Poly_variant((sorted((A()))))))
+    37dab657a1bd138599a678980804d513
     (Exp(Application(Exp(Record((foo(Exp(Base option((Exp(Rec_app 0())))))))))()))
     2e92d51efb901fcf492f243fc1c3601d
     (Exp(Application(Exp(Variant((Empty())(Cons((Exp(Tuple((Exp(Base int()))(Exp(Rec_app 0()))))))))))()))
