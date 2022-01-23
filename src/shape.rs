@@ -76,10 +76,13 @@ impl<T: Digestible> Digestible for Option<T> {
         match self {
             None => {
                 context.consume("none");
+                context.consume(<[u8; 16]>::from("".digest()));
             }
             Some(t) => {
                 context.consume("some");
-                context.consume(<[u8; 16]>::from(t.digest()));
+                let mut inner = md5::Context::new();
+                inner.consume(<[u8; 16]>::from(t.digest()));
+                context.consume(<[u8; 16]>::from(inner.compute()));
             }
         }
         context.compute()
