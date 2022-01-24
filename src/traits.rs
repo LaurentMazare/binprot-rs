@@ -1,5 +1,5 @@
 use crate::Shape;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use std::io::{Read, Write};
 
 pub type ShapeContext = HashMap<std::any::TypeId, bool>;
@@ -10,12 +10,12 @@ pub trait BinProtShape: 'static {
     fn binprot_shape_loop(typeids: &mut ShapeContext) -> Shape {
         let typeid = std::any::TypeId::of::<Self>();
         match typeids.entry(typeid) {
-            std::collections::hash_map::Entry::Occupied(mut e) => {
+            Entry::Occupied(mut e) => {
                 // TODO: Adjust the parameters.
                 e.insert(true);
                 Shape::RecApp(0, vec![])
             }
-            std::collections::hash_map::Entry::Vacant(e) => {
+            Entry::Vacant(e) => {
                 e.insert(false);
                 let shape = Self::binprot_shape_impl(typeids);
                 match typeids.remove(&typeid) {
