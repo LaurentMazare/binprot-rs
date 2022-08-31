@@ -98,7 +98,7 @@ impl BinProtWrite for bool {
 
 impl<T: BinProtWrite> BinProtWrite for Option<T> {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
-        match &*self {
+        match self {
             None => w.write_all(&[0u8]),
             Some(v) => {
                 w.write_all(&[1u8])?;
@@ -448,7 +448,7 @@ impl<T: BinProtRead> BinProtRead for WithLen<T> {
 }
 
 /// A buffer serialized as its size first as a nat0, then the payload itself.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BufferWithLen(pub Vec<u8>);
 
 impl BinProtRead for BufferWithLen {
