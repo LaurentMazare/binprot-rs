@@ -334,7 +334,7 @@ impl<T: BinProtRead> BinProtRead for Vec<T> {
         Self: Sized,
     {
         let len = int::read_nat0(r)?;
-        let mut v: Vec<T> = Vec::new();
+        let mut v: Vec<T> = Vec::with_capacity(len as usize);
         for _i in 0..len {
             let item = T::binprot_read(r)?;
             v.push(item)
@@ -352,7 +352,7 @@ impl BinProtRead for Vec<f32> {
         Self: Sized,
     {
         let len = int::read_nat0(r)?;
-        let mut v: Vec<f32> = Vec::new();
+        let mut v: Vec<f32> = Vec::with_capacity(len as usize);
         for _i in 0..len {
             let item = r.read_f32::<byteorder::NativeEndian>()?;
             v.push(item)
