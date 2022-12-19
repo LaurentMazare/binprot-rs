@@ -73,7 +73,7 @@ impl BinProtWrite for Nat0 {
 
 impl BinProtWrite for i64 {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
-        int::write_i64(w, *self as i64)
+        int::write_i64(w, *self)
     }
 }
 
@@ -91,7 +91,7 @@ impl BinProtWrite for () {
 
 impl BinProtWrite for bool {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
-        let b = if *self { 1 } else { 0 };
+        let b = u8::from(*self);
         w.write_all(&[b])
     }
 }

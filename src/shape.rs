@@ -29,7 +29,7 @@ pub trait Digestible {
 
 impl Digestible for Uuid {
     fn digest(&self) -> md5::Digest {
-        md5::compute(&self.0)
+        md5::compute(self.0)
     }
 }
 
