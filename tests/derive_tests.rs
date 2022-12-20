@@ -1,3 +1,4 @@
+#![allow(clippy::approx_constant)]
 use binprot::macros::{BinProtRead, BinProtWrite};
 use binprot::{BinProtRead, BinProtSize, BinProtWrite};
 

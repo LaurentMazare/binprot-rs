@@ -31,7 +31,7 @@ impl std::fmt::Debug for Sexp {
                     }
                     fmt.write_str("\"")?;
                 } else {
-                    fmt.write_str(&atom)?;
+                    fmt.write_str(atom)?;
                 }
                 Ok(())
             }
@@ -164,7 +164,7 @@ impl RpcClient {
         T::Q: BinProtWrite,
         T::R: BinProtRead,
     {
-        self.id = self.id + 1;
+        self.id += 1;
         let query = Query {
             rpc_tag: T::NAME.to_owned(),
             version: T::VERSION,
@@ -318,7 +318,7 @@ impl RpcServer {
 }
 
 fn main() -> Result<()> {
-    let arg = std::env::args().skip(1).next();
+    let arg = std::env::args().nth(1);
 
     match arg.as_deref() {
         Some("client") => {
