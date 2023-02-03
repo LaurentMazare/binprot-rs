@@ -90,6 +90,27 @@ impl<T: Digestible> Digestible for Option<T> {
     }
 }
 
+impl<T: Digestible, E: Digestible> Digestible for Result<T, E> {
+    fn digest(&self) -> md5::Digest {
+        let mut context = md5::Context::new();
+        match self {
+            Ok(t) => {
+                context.consume("ok");
+                let mut inner = md5::Context::new();
+                inner.consume(<[u8; 16]>::from(t.digest()));
+                context.consume(<[u8; 16]>::from(inner.compute()));
+            }
+            Err(t) => {
+                context.consume("err");
+                let mut inner = md5::Context::new();
+                inner.consume(<[u8; 16]>::from(t.digest()));
+                context.consume(<[u8; 16]>::from(inner.compute()));
+            }
+        }
+        context.compute()
+    }
+}
+
 impl<T: Digestible> Digestible for Vec<T> {
     fn digest(&self) -> md5::Digest {
         self.as_slice().digest()
@@ -217,6 +238,12 @@ impl<T: BinProtShape> BinProtShape for Vec<T> {
 impl<T: BinProtShape> BinProtShape for Option<T> {
     fn binprot_shape_impl(c: &mut ShapeContext) -> Shape {
         Shape::Base(Uuid::from("option"), vec![T::binprot_shape_loop(c)])
+    }
+}
+
+impl<T: BinProtShape, E: BinProtShape> BinProtShape for Result<T, E> {
+    fn binprot_shape_impl(c: &mut ShapeContext) -> Shape {
+        Shape::Base(Uuid::from("result"), vec![T::binprot_shape_loop(c), E::binprot_shape_loop(c)])
     }
 }
 

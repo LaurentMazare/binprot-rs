@@ -108,6 +108,21 @@ impl<T: BinProtWrite> BinProtWrite for Option<T> {
     }
 }
 
+impl<T: BinProtWrite, E: BinProtWrite> BinProtWrite for Result<T, E> {
+    fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
+        match self {
+            Ok(v) => {
+                w.write_all(&[0u8])?;
+                v.binprot_write(w)
+            }
+            Err(e) => {
+                w.write_all(&[1u8])?;
+                e.binprot_write(w)
+            }
+        }
+    }
+}
+
 impl<T: BinProtWrite> BinProtWrite for Box<T> {
     fn binprot_write<W: Write>(&self, w: &mut W) -> std::io::Result<()> {
         self.as_ref().binprot_write(w)
@@ -314,6 +329,24 @@ impl<T: BinProtRead> BinProtRead for Option<T> {
             Ok(Some(v))
         } else {
             Err(Error::UnexpectedValueForOption(c))
+        }
+    }
+}
+
+impl<T: BinProtRead, E: BinProtRead> BinProtRead for Result<T, E> {
+    fn binprot_read<R: Read + ?Sized>(r: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let c = r.read_u8()?;
+        if c == 0 {
+            let v = T::binprot_read(r)?;
+            Ok(Ok(v))
+        } else if c == 1 {
+            let e = E::binprot_read(r)?;
+            Ok(Err(e))
+        } else {
+            Err(Error::UnexpectedVariantIndex { index: c, ident: "Result" })
         }
     }
 }
