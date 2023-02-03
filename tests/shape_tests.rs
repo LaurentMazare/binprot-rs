@@ -120,6 +120,7 @@ fn test_shapes() {
     assert_digest::<Vec<i64>>("4c138035aa69ec9dd8b7a7119090f84a");
     assert_digest::<()>("86ba5df747eec837f0b391dd49f33f9e");
     assert_digest::<Option<i64>>("33fd4ff7bde530bddf13dfa739207fae");
+    assert_digest::<Result<i64, String>>("d90ddb29b1dc8ae4416867c01634f2de");
     assert_eq!(format!("{:?}", TestVariant::binprot_shape()), "Variant([(\"Foo\", [])])");
     assert_digest::<TestVariant>("81253431711eb0c9d669d0cf1c5ffea7");
     assert_digest::<TestVariant2>("6b5a9ecfe97b786f98c8b9e502c3d6db");

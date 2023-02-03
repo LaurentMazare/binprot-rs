@@ -227,3 +227,20 @@ fn breakfast_str() {
     let err = String::binprot_read(&mut data.as_slice());
     assert!(err.is_err())
 }
+
+#[derive(BinProtRead, BinProtWrite, Debug, PartialEq)]
+enum BinProtResult<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+#[test]
+fn result_same_as_derived() {
+    let result: Result<i64, String> = Err("test".to_string());
+    let mut data: Vec<u8> = Vec::new();
+    result.binprot_write(&mut data).unwrap();
+    let mut slice = data.as_slice();
+    let derived_result: BinProtResult<i64, String> =
+        BinProtResult::binprot_read(&mut slice).unwrap();
+    assert_eq!(derived_result, BinProtResult::Err("test".to_string()));
+}
