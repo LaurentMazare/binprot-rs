@@ -2,7 +2,7 @@ use binprot::macros::{BinProtRead, BinProtWrite};
 use std::fmt::Debug;
 
 #[cfg(feature = "async")]
-use binprot::BinProtWrite;
+use binprot::{BinProtRead, BinProtWrite};
 
 #[derive(BinProtRead, BinProtWrite, Clone, Debug, PartialEq)]
 struct Pancakes(i64);
