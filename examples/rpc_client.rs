@@ -152,9 +152,9 @@ impl RpcClient {
     fn connect(address: &str) -> Result<Self> {
         let mut stream = TcpStream::connect(address)?;
         let mut buffer = vec![0u8; 256];
-        println!("Successfully connected to {}", address);
+        println!("Successfully connected to {address}");
         let handshake: Handshake = read_bin_prot(&mut stream, &mut buffer)?;
-        println!("Received {:?}", handshake);
+        println!("Received {handshake:?}");
         write_bin_prot(&mut stream, &handshake)?;
         Ok(RpcClient { stream, buffer, id: 0 })
     }
@@ -269,7 +269,7 @@ impl RpcServer {
     fn bind(address: &str) -> Result<Self> {
         let listener = TcpListener::bind(address)?;
         let buffer = vec![0u8; 256];
-        println!("Successfully bound to {}", address);
+        println!("Successfully bound to {address}");
         let mut rpc_impls: BTreeMap<String, Box<dyn ErasedJRpcImpl>> = BTreeMap::new();
         let get_unique_id_impl: Box<dyn ErasedJRpcImpl> = Box::new(GetUniqueIdImpl(0));
         rpc_impls.insert("get-unique-id".to_string(), get_unique_id_impl);
@@ -279,10 +279,10 @@ impl RpcServer {
     fn run(&mut self) -> Result<()> {
         for stream in self.listener.incoming() {
             let mut stream = stream?;
-            println!("Got connection {:?}.", stream);
+            println!("Got connection {stream:?}.");
             write_bin_prot(&mut stream, &Handshake(vec![4411474, 1]))?;
             let handshake: Handshake = read_bin_prot(&mut stream, &mut self.buffer)?;
-            println!("Received handshake {:?}", handshake);
+            println!("Received handshake {handshake:?}");
             let mut recv_bytes = [0u8; 8];
             loop {
                 // We don't know the type of rpcs that will be received so the
@@ -290,7 +290,7 @@ impl RpcServer {
                 stream.read_exact(&mut recv_bytes)?;
                 let _recv_len = i64::from_le_bytes(recv_bytes);
                 let query = ServerMessage::<()>::binprot_read(&mut stream)?;
-                println!("Received rpc query {:?}", query);
+                println!("Received rpc query {query:?}");
                 match query {
                     ServerMessage::Heartbeat => {}
                     ServerMessage::Query(query) => match self.rpc_impls.get_mut(&query.rpc_tag) {
@@ -324,17 +324,17 @@ fn main() -> Result<()> {
         Some("client") => {
             let mut client = RpcClient::connect("localhost:8080")?;
             let response = client.dispatch::<RpcGetUniqueId>(())?;
-            println!(">> {:?}", response);
+            println!(">> {response:?}");
             let response = client.dispatch::<RpcGetUniqueId>(())?;
-            println!(">> {:?}", response);
+            println!(">> {response:?}");
             let response = client.dispatch::<RpcSetIdCounter>(42)?;
-            println!(">> {:?}", response);
+            println!(">> {response:?}");
             let response = client.dispatch::<RpcGetUniqueId>(())?;
-            println!(">> {:?}", response);
+            println!(">> {response:?}");
             let response = client.dispatch::<RpcSetIdCounter>(0)?;
-            println!(">> {:?}", response);
+            println!(">> {response:?}");
             let response = client.dispatch::<RpcGetUniqueIdTypo>(())?;
-            println!(">> {:?}", response);
+            println!(">> {response:?}");
         }
         Some("server") => {
             let mut server = RpcServer::bind("localhost:8080")?;

@@ -80,7 +80,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
         }
         syn::Data::Enum(DataEnum { enum_token, variants, .. }) => {
             if variants.len() > 256 {
-                return syn::Error::new_spanned(&enum_token, "enum with to many cases")
+                return syn::Error::new_spanned(enum_token, "enum with to many cases")
                     .to_compile_error()
                     .into();
             }
@@ -127,7 +127,7 @@ fn impl_binprot_write(ast: &DeriveInput) -> TokenStream {
             }
         }
         syn::Data::Union(DataUnion { union_token, .. }) => {
-            return syn::Error::new_spanned(&union_token, "union is not supported")
+            return syn::Error::new_spanned(union_token, "union is not supported")
                 .to_compile_error()
                 .into();
         }
@@ -197,7 +197,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
         }
         syn::Data::Enum(DataEnum { enum_token, variants, .. }) => {
             if variants.len() > 256 {
-                return syn::Error::new_spanned(&enum_token, "enum with to many cases")
+                return syn::Error::new_spanned(enum_token, "enum with to many cases")
                     .to_compile_error()
                     .into();
             }
@@ -256,7 +256,7 @@ fn impl_binprot_read(ast: &DeriveInput) -> TokenStream {
             }
         }
         syn::Data::Union(DataUnion { union_token, .. }) => {
-            return syn::Error::new_spanned(&union_token, "union is not supported")
+            return syn::Error::new_spanned(union_token, "union is not supported")
                 .to_compile_error()
                 .into();
         }
@@ -380,7 +380,7 @@ fn impl_binprot_shape(ast: &DeriveInput) -> TokenStream {
             }
         }
         syn::Data::Union(DataUnion { union_token, .. }) => {
-            return syn::Error::new_spanned(&union_token, "union is not supported")
+            return syn::Error::new_spanned(union_token, "union is not supported")
                 .to_compile_error()
                 .into();
         }
