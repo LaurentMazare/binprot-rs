@@ -29,7 +29,7 @@ pub trait Digestible {
 
 impl Digestible for Uuid {
     fn digest(&self) -> md5::Digest {
-        md5::compute(&self.0)
+        md5::compute(self.0)
     }
 }
 
@@ -247,7 +247,7 @@ mod tests {
         assert_eq!(digest_str(&shape_t), "43fa87a0bac7a0bb295f67cdc685aa26");
         let shape_u = Shape::Record(vec![("t", base("int")), ("u", base("float"))]);
         assert_eq!(digest_str(&shape_u), "485a864ae3ab9d4e12534fd17f64a7c4");
-        let shape_v = Shape::Record(vec![("t", shape_t.clone()), ("u", shape_u.clone())]);
+        let shape_v = Shape::Record(vec![("t", shape_t), ("u", shape_u)]);
         assert_eq!(digest_str(&shape_v), "3a9e779c28768361e904e90f37728927");
         // Shape used for some recursive type, see tests/shape_tests.ml
         //   type int_list =
