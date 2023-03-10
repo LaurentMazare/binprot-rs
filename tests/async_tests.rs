@@ -45,7 +45,7 @@ async fn roundtrip<
 #[tokio::test]
 async fn roundtrip_test() -> Result<(), binprot::Error> {
     roundtrip(&vec![Pancakes(42); 100]).await?;
-    roundtrip(&vec![Pancakes(42), Pancakes(43), Pancakes(44)]).await?;
+    roundtrip(&[Pancakes(42), Pancakes(43), Pancakes(44)]).await?;
     let breakfasts = Breakfasts {
         pancakes: Pancakes(12),
         more_pancakes: MorePancakes(-123, 2.71828182846, 0),
