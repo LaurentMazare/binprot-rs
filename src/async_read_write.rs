@@ -88,10 +88,16 @@ pub async fn write_i64<W: AsyncWriteExt + Unpin>(w: &mut W, v: i64) -> std::io::
 pub async fn read_signed<R: AsyncReadExt + Unpin + ?Sized>(r: &mut R) -> std::io::Result<i64> {
     let c = r.read_u8().await?;
     let v = match c {
-        CODE_NEG_INT8 => r.read_i8().await? as i64,
-        CODE_INT16 => r.read_i16().await? as i64,
-        CODE_INT32 => r.read_i32().await? as i64,
-        CODE_INT64 => r.read_i64().await?,
+        CODE_NEG_INT8 => {
+            let i = r.read_i8().await? as i64;
+            if i >= 0 {
+                return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Neg_int8"));
+            }
+            i
+        }
+        CODE_INT16 => r.read_i16_le().await? as i64,
+        CODE_INT32 => r.read_i32_le().await? as i64,
+        CODE_INT64 => r.read_i64_le().await?,
         c => c as i64,
     };
     Ok(v)
@@ -100,9 +106,9 @@ pub async fn read_signed<R: AsyncReadExt + Unpin + ?Sized>(r: &mut R) -> std::io
 pub async fn read_nat0<R: AsyncReadExt + Unpin + ?Sized>(r: &mut R) -> std::io::Result<u64> {
     let c = r.read_u8().await?;
     let v = match c {
-        CODE_INT16 => r.read_u16().await? as u64,
-        CODE_INT32 => r.read_u32().await? as u64,
-        CODE_INT64 => r.read_u64().await?,
+        CODE_INT16 => r.read_u16_le().await? as u64,
+        CODE_INT32 => r.read_u32_le().await? as u64,
+        CODE_INT64 => r.read_u64_le().await?,
         c => c as u64,
     };
     Ok(v)
